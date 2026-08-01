@@ -74,7 +74,8 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 Sunucu adresi ve port hassas bilgi olmadığından workflow dosyasında sabit tanımlıdır.
 
 **Deploy davranışıyla ilgili notlar:**
-- Sunucu şifresiz (cleartext) FTP bağlantısını reddettiği için `protocol: ftps` (port 21 üzerinden explicit FTPS) kullanılır.
-- FTP sertifikası alan adı yerine sunucu adına düzenlendiğinden hostname uyuşmazlığını tolere etmek için `security: loose` ayarlanmıştır.
-- `config.php` **senkronize edilmez** — repodaki sürüm placeholder değerler içerir ve sunucudaki gerçek yapılandırmanın üzerine yazılmamalıdır. Aynı şekilde `README.md`, `.gitignore` ve `.github/` dizini de yüklenmez.
-- `dangerous-clean-slate: false` olduğundan sunucuda repoda bulunmayan dosyalar (`.well-known/`, `error_log` vb.) silinmez.
+- Aktarım `lftp mirror --reverse` ile yapılır. Daha önce `SamKirkland/FTP-Deploy-Action` kullanılıyordu; ancak o action Node 20 için yazılmışken runner Node 24'e zorluyor ve Node 24'ün katı TLS varsayılanları sunucunun FTPS yapılandırmasıyla el sıkışamayıp `Timeout (control socket)` hatası veriyordu. lftp sistemin TLS kitaplığını kullandığından bu uyumsuzluktan etkilenmez.
+- Sunucu şifresiz (cleartext) FTP bağlantısını reddettiği için (`421 Please reconnect using TLS security mechanisms`) `ftp:ssl-force` ile port 21 üzerinden explicit FTPS zorunlu tutulur; veri kanalı da `ftp:ssl-protect-data` ile şifrelenir.
+- FTP sertifikası alan adı yerine sunucu adına düzenlendiğinden hostname uyuşmazlığını tolere etmek için `ssl:verify-certificate no` ayarlanmıştır.
+- `config.php` **senkronize edilmez** — repodaki sürüm placeholder değerler içerir ve sunucudaki gerçek yapılandırmanın üzerine yazılmamalıdır. Aynı şekilde `README.md` ve `.git*` ile başlayan her şey (`.git/`, `.github/`, `.gitignore`) yüklenmez.
+- `mirror` komutu `--delete` almadığından sunucuda repoda bulunmayan dosyalar (`.well-known/`, `error_log` vb.) silinmez; yalnızca değişen dosyalar aktarılır.

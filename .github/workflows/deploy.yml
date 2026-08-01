@@ -11,31 +11,41 @@ concurrency:
 
 jobs:
   ftp-deploy:
-    name: Dosyaları FTP ile sunucuya gönder
+    name: Dosyaları FTPS ile sunucuya gönder
     runs-on: ubuntu-latest
+    env:
+      FTP_HOST: ftp.derspros.com.tr
+      # Giriş sonrası ev dizinine (/home/derspros) göreli hedef klasör
+      REMOTE_DIR: ays.derspros.com.tr
     steps:
       - name: Kodu çek
         uses: actions/checkout@v4
 
-      - name: FTP ile ays.derspros.com.tr dizinine yükle
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ftp.derspros.com.tr
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          port: 21
-          server-dir: ays.derspros.com.tr/
-          # Sunucu cleartext FTP'yi reddediyor (421 "Please reconnect using TLS
-          # security mechanisms"), bu yüzden port 21 üzerinden explicit FTPS.
-          protocol: ftps
-          # Sertifika ftp.derspros.com.tr yerine sunucu adına (talom.wlsrv.com)
-          # düzenlendiğinden strict doğrulama hostname uyuşmazlığında patlar.
-          security: loose
-          dangerous-clean-slate: false
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/.github/**
-            config.php
-            README.md
-            .gitignore
+      - name: lftp kur
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      # SamKirkland/FTP-Deploy-Action yerine lftp kullanılıyor: o action Node 20
+      # için yazılmış ama runner Node 24'e zorluyor ve Node 24'ün katı TLS
+      # varsayılanları sunucunun FTPS yapılandırmasıyla el sıkışamayıp
+      # "Timeout (control socket)" ile asılı kalıyordu. lftp sistemin TLS
+      # kitaplığını kullandığı için bu uyumsuzluktan etkilenmiyor.
+      - name: FTPS ile yükle
+        env:
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "ftp://$FTP_HOST:21" <<'LFTP'
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ssl:verify-certificate no
+          set ftp:passive-mode true
+          set ftp:prefer-epsv false
+          set net:timeout 20
+          set net:max-retries 2
+          set cmd:fail-exit true
+          debug 3
+          pwd
+          mirror --reverse --verbose --no-perms --exclude '^\.git' --exclude-glob 'config.php' --exclude-glob 'README.md' ./ ays.derspros.com.tr/
+          bye
+          LFTP
