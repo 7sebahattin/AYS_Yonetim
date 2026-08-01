@@ -27,13 +27,29 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 ├─ giderler.php           → Gider takibi
 ├─ raporlar.php           → Özet ve trend raporları
 ├─ print.php / daire_print.php → Yazdırılabilir raporlar
-├─ ayarlar.php            → Hesap / apartman / tema ayarları
+├─ ayarlar.php            → Hesap / apartman / e-posta / tema ayarları
 ├─ cikis.php              → Çıkış
-├─ config.php             → Veritabanı bağlantı ayarları
+├─ sifre_unuttum.php      → Şifre sıfırlama talebi
+├─ sifre_yenile.php       → Jetonla yeni şifre belirleme
+├─ eposta_dogrula.php     → E-posta adresi doğrulama
+├─ goc.php                → Şema göçü (web arayüzü, anahtarla korumalı)
+├─ config.php             → Veritabanı + SMTP ayarları (deploy EDİLMEZ)
 ├─ manifest.json          → PWA manifest (ad, ikonlar, tema rengi)
 ├─ sw.js                  → Service worker (yalnızca statik varlıkları önbelleğe alır)
 ├─ offline.html           → Çevrimdışı iken gösterilen jenerik sayfa
-├─ includes/              → Ortak fonksiyonlar, header/footer, yazdırma yardımcıları
+├─ semalar/               → Şema göçü (migration) SQL dosyaları
+├─ araclar/goc_cli.php    → Şema göçü (komut satırı)
+├─ vendor/PHPMailer/      → SMTP kütüphanesi (elle eklendi, LGPL-2.1)
+├─ includes/              → Ortak fonksiyonlar ve altyapı katmanları
+│  ├─ functions.php        → Oturum, CSRF, yetki, biçimlendirme
+│  ├─ varsayilanlar.php    → config.php'de tanımsız ayarlara güvenli varsayılan
+│  ├─ goc.php              → Göç çalıştırıcı
+│  ├─ eposta.php           → SMTP gönderim katmanı + HTML şablon
+│  ├─ kimlik.php           → Şifre sıfırlama / e-posta doğrulama jetonları
+│  ├─ denetim.php          → Denetim kaydı (audit log)
+│  ├─ hiz_limiti.php       → Hız sınırlama (brute-force / spam koruması)
+│  ├─ dosya.php            → Dosya yükleme ve güvenli saklama
+│  └─ header.php / footer.php / print_utils.php
 └─ assets/                → CSS/JS dosyaları
    ├─ style.css            → Panel stilleri (mobil dahil)
    ├─ landing.css           → Tanıtım sayfası stilleri
@@ -131,8 +147,123 @@ kategori, o kullanıcının `gider_kategorileri` tablosundaki kişisel listesine
 
 **Bilinen sınırlamalar / öneriler:**
 - Giriş formunda kaba kuvvet (brute-force) koruması (deneme sınırı, kilitleme, CAPTCHA) bulunmuyor.
-- Şifre sıfırlama (e-posta ile) akışı yok.
+- ~~Şifre sıfırlama (e-posta ile) akışı yok.~~ → Eklendi, bkz. "Şifre Sıfırlama & E-posta Doğrulama".
 - Minimum şifre uzunluğu 6 karakterdir, karmaşıklık zorunluluğu yoktur.
+
+## Şema Göçü (Migration)
+
+Proje başlangıçta "kendi kendini onaran" tablolar kullanıyordu (`CREATE TABLE IF NOT
+EXISTS`). Bu, yeni tablo eklemek için yeterli ama **var olan tabloyu değiştirmek**
+(`ALTER TABLE`, veri taşıma) için değil. Bu yüzden sürümlenmiş bir göç sistemi eklendi.
+
+- Göçler `semalar/NNN_aciklama.sql` dosyalarıdır, numara sırasıyla uygulanır.
+- Uygulananlar `sema_surumu` tablosuna yazılır; aynı göç iki kez çalıştırılmaz.
+- Göç dosyaları MariaDB'nin `ADD COLUMN IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS`
+  sözdizimini kullanır — böylece yarıda kalan bir göç tekrar çalıştırılabilir.
+
+**Çalıştırma:**
+
+```bash
+php araclar/goc_cli.php durum     # bekleyenleri listele
+php araclar/goc_cli.php uygula    # bekleyenleri uygula
+```
+
+SSH erişimi yoksa `https://<alan-adiniz>/goc.php` üzerinden de çalıştırılabilir;
+`config.php` içindeki `GOC_ANAHTARI` gerekir (anahtar POST gövdesinde taşınır, URL'de
+değil — aksi halde sunucu erişim günlüklerine düz metin yazılırdı).
+
+> ⚠️ **Göç öncesi veritabanı yedeği alın.** MySQL/MariaDB'de DDL işlemleri geri
+> alınamaz (transaction'a girmez); yarıda kalan bir göç elle temizlenmek zorunda
+> kalınabilir.
+
+### Dağıtım (deploy) sırası — önemli
+
+`config.php` sunucuya **deploy edilmez**, dolayısıyla koda eklenen yeni ayar sabitleri
+sunucudaki eski config'de bulunmaz. `includes/varsayilanlar.php` bu sabitlere güvenli
+varsayılan vererek "undefined constant" ölümcül hatasını önler; ilgili özellik
+yapılandırılana kadar sessizce devre dışı kalır.
+
+Aynı şekilde uygulama, göç uygulanmadan da çalışır (`eposta_semasi_hazir_mi()`
+kontrolü): e-posta arayüzü gizlenir, sistemin geri kalanı normal çalışmaya devam eder.
+Doğru sıra:
+
+1. Dosyaları dağıt (deploy)
+2. `goc.php` veya `araclar/goc_cli.php` ile göçleri uygula
+3. `config.php`'ye SMTP ayarlarını gir
+
+## E-posta Yapılandırması (SMTP)
+
+Şifre sıfırlama e-postaları **kimliği doğrulanmış SMTP** ile gönderilir. PHP'nin
+`mail()` fonksiyonu kullanılmaz: paylaşımlı hostingde kimlik doğrulaması yapmadan
+gönderdiği için iletiler büyük oranda spam'e düşer ve sıfırlama akışı işlevsiz kalır.
+
+Sunucudaki `config.php` dosyasına eklenmesi gerekenler:
+
+```php
+define('SMTP_HOST', 'mail.alanadiniz.com');
+define('SMTP_PORT', 587);                   // 587 (TLS) veya 465 (SSL)
+define('SMTP_KULLANICI', 'noreply@alanadiniz.com');
+define('SMTP_SIFRE', '...');
+define('SMTP_GUVENLIK', 'tls');             // tls | ssl | yok
+define('EPOSTA_GONDEREN', 'noreply@alanadiniz.com');
+define('SITE_ADRESI', 'https://ays.alanadiniz.com');
+```
+
+Bu değerler boş bırakılırsa sistem çalışmaya devam eder; e-posta özellikleri
+"yapılandırılmamış" olarak işaretlenir ve arayüzde bu bilgi gösterilir.
+
+> ⚠️ **SMTP tek başına yetmez.** Alan adına **SPF** ve **DKIM** DNS kayıtları
+> eklenmezse Gmail/Outlook iletileri yine spam'e atabilir. Bu bir DNS yapılandırması
+> işidir, kod işi değil.
+
+Gönderim sonuçları `eposta_kaydi` tablosuna yazılır ("e-posta gelmedi" şikayetini
+teşhis edebilmek için); jeton, bağlantı veya şifre gibi gizli içerik **saklanmaz**.
+
+## Şifre Sıfırlama & E-posta Doğrulama
+
+**Ön koşul — e-posta toplama:** Bu özellik eklenene kadar sistemde kullanıcı e-postası
+hiç toplanmıyordu (`kullanicilar` tablosunda sütun yoktu). Bu yüzden:
+
+- Yeni kayıtlarda e-posta **zorunlu** alandır ve doğrulama bağlantısı otomatik gönderilir.
+- Mevcut kullanıcılara panelde kapatılabilir bir uyarı bandı gösterilir; adreslerini
+  Ayarlar → E-posta Adresi bölümünden ekleyebilirler.
+
+**Güvenlik tasarımı:**
+
+- Sıfırlama bağlantısı **yalnızca doğrulanmış** adrese gönderilir. Doğrulanmamış bir
+  adres yazım hatası olabilir; bağlantı yabancı birinin gelen kutusuna giderse hesap
+  ele geçirilebilirdi.
+- `sifre_unuttum.php`, adres kayıtlı olsun ya da olmasın **aynı mesajı** gösterir —
+  aksi halde form, hangi e-postaların sistemde olduğunu keşfetmek için kullanılabilirdi.
+- Jetonlar `hatirlama_jetonlari` ile aynı **selector/validator** desenini kullanır:
+  bağlantıda açık duran seçici ile satır bulunur, gizli doğrulayıcı ise veritabanına
+  asla düz metin yazılmaz (yalnızca SHA-256 hash'i, `hash_equals` ile karşılaştırılır).
+- Jetonlar **tek kullanımlıktır**; kullanıldığında aynı kullanıcının bekleyen diğer
+  jetonları da iptal edilir. Sıfırlama 1 saat, doğrulama 48 saat geçerlidir.
+- Şifre değiştiğinde **tüm "Beni Hatırla" oturumları düşürülür** — şifre ele geçirildiği
+  için sıfırlanıyor olabilir, saldırganın açık kalan kalıcı oturumu da kapanmalıdır.
+- Şifre değişiminde kullanıcıya bilgilendirme e-postası gider (hesap ele geçirme erken
+  uyarısı).
+- Hız sınırlama: adres başına 15 dakikada 3, IP başına 15 dakikada 10 istek. Aksi halde
+  bu form başkasının gelen kutusuna spam göndermek için kullanılabilirdi.
+
+## Denetim Kaydı, Hız Sınırlama ve Dosya Saklama
+
+Faz 3'te gelecek süper admin panelinin gerektirdiği altyapılar; şimdilik kimlik
+olaylarında kullanılıyor.
+
+- **`denetim_kaydi`**: kim, ne zaman, hangi eylemi yaptı (giriş, şifre sıfırlama,
+  e-posta doğrulama, göç çalıştırma, yetkisiz göç denemesi). Denetim yazımı ana işlemi
+  asla bozmaz — tablo yoksa veya yazma başarısız olursa sessizce yutulur.
+- **`hiz_limiti`**: kayan pencere sayacı. Veritabanı tabanlı olması bilinçli; paylaşımlı
+  hostingde APCu/Redis garanti değildir.
+- **`includes/dosya.php`**: Faz 4/5'teki belge, fatura ve fotoğraf yüklemeleri için.
+  Dosyalar **web kökünün dışında** (`DOSYA_KOK`, varsayılan olarak `public_html`'in bir
+  üstü) saklanır ve yalnızca yetki kontrolü yapan bir bekçi betiği üzerinden sunulur —
+  içerik kişisel ve mali veri barındırdığı için doğrudan URL ile erişilebilir olmamalıdır.
+  Uzantıya tek başına güvenilmez: `finfo` ile gerçek içerik türü doğrulanır (sahte MIME
+  başlığıyla gönderilen `.php` içerikli "PDF" reddedilir) ve disktaki dosya adı yeniden
+  üretilir.
 
 ## Oturum Süresi & "Beni Hatırla"
 
