@@ -27,19 +27,134 @@ function oturum_baslat(): void {
     }
 }
 
+// ─── "Beni Hatırla" — kalıcı oturum çerezi ──────────────────
+// Selector/validator deseni: çerezde açıkça duran "seçici" ile DB'de
+// satır bulunur, gizli "doğrulayıcı" ise hiçbir zaman düz metin
+// saklanmaz — yalnızca hash'i tutulur ve hash_equals ile karşılaştırılır.
+// Her kullanımda jeton rotasyona sokulur (eski satır silinir, yenisi
+// yazılır) — çerez çalınsa bile tekrar kullanılabilirlik penceresi
+// tek seferle sınırlı kalır.
+const HATIRLAMA_COOKIE = 'ays_hatirla';
+const HATIRLAMA_GUN    = 30;
+
+function hatirlama_tablosunu_hazirla(): void {
+    db()->exec("
+        CREATE TABLE IF NOT EXISTS hatirlama_jetonlari (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            kullanici_id INT UNSIGNED NOT NULL,
+            secici VARCHAR(24) NOT NULL,
+            dogrulayici_hash VARCHAR(64) NOT NULL,
+            son_kullanim DATETIME NOT NULL,
+            olusturma DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_secici (secici),
+            KEY fk_hatirlama_kullanici (kullanici_id),
+            CONSTRAINT fk_hatirlama_kullanici FOREIGN KEY (kullanici_id)
+                REFERENCES kullanicilar (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci
+    ");
+}
+
+function hatirlama_cerez_ayarlari(int $gecerlilik_saniye): array {
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    return [
+        'expires'  => time() + $gecerlilik_saniye,
+        'path'     => '/',
+        'secure'   => $https,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ];
+}
+
+// Girişte "Beni Hatırla" işaretliyse çağrılır: yeni jeton üretir, DB'ye
+// hash'ini yazar, ham değeri (seçici:doğrulayıcı) çerez olarak ayarlar.
+function hatirlama_jetonu_baslat(int $kullanici_id): void {
+    hatirlama_tablosunu_hazirla();
+    $secici       = bin2hex(random_bytes(9));
+    $dogrulayici  = bin2hex(random_bytes(32));
+    $son_kullanim = date('Y-m-d H:i:s', time() + HATIRLAMA_GUN * 86400);
+
+    db()->prepare("INSERT INTO hatirlama_jetonlari (kullanici_id, secici, dogrulayici_hash, son_kullanim) VALUES (?,?,?,?)")
+        ->execute([$kullanici_id, $secici, hash('sha256', $dogrulayici), $son_kullanim]);
+
+    setcookie(HATIRLAMA_COOKIE, $secici . ':' . $dogrulayici, hatirlama_cerez_ayarlari(HATIRLAMA_GUN * 86400));
+}
+
+// Aktif oturum yoksa "Beni Hatırla" çerezinden sessizce oturum kurmayı
+// dener. Başarılıysa $_SESSION doldurulur, jeton rotasyona sokulur ve
+// true döner; aksi halde (çerez yok/geçersiz/süresi dolmuş) false döner.
+function oturumu_hatirlama_ile_dene(): bool {
+    if (!empty($_SESSION['kullanici_id'])) return true;
+    if (empty($_COOKIE[HATIRLAMA_COOKIE]) || !str_contains($_COOKIE[HATIRLAMA_COOKIE], ':')) return false;
+
+    [$secici, $dogrulayici] = explode(':', $_COOKIE[HATIRLAMA_COOKIE], 2);
+
+    hatirlama_tablosunu_hazirla();
+    $stmt = db()->prepare("
+        SELECT hj.id, hj.kullanici_id, hj.dogrulayici_hash,
+               k.kullanici_adi, k.apartman_adi, k.toplam_daire, k.tema
+        FROM hatirlama_jetonlari hj
+        JOIN kullanicilar k ON k.id = hj.kullanici_id
+        WHERE hj.secici = ? AND hj.son_kullanim > NOW()
+    ");
+    $stmt->execute([$secici]);
+    $jeton = $stmt->fetch();
+
+    if (!$jeton || !hash_equals($jeton['dogrulayici_hash'], hash('sha256', $dogrulayici))) {
+        hatirlama_cerezini_temizle(); // gecersiz/calinmis olabilecek cerezi temizle
+        return false;
+    }
+
+    session_regenerate_id(true);
+    $_SESSION['kullanici_id']  = (int)$jeton['kullanici_id'];
+    $_SESSION['kullanici_adi'] = $jeton['kullanici_adi'];
+    $_SESSION['apartman_adi']  = $jeton['apartman_adi'];
+    $_SESSION['toplam_daire']  = (int)$jeton['toplam_daire'];
+    $_SESSION['tema']          = $jeton['tema'] ?? 'koyu';
+    $_SESSION['son_islem']     = time();
+
+    db()->prepare("DELETE FROM hatirlama_jetonlari WHERE id=?")->execute([$jeton['id']]);
+    hatirlama_jetonu_baslat((int)$jeton['kullanici_id']);
+
+    return true;
+}
+
+// Çıkışta ya da geçersiz/çalıntı jeton tespit edildiğinde çağrılır.
+function hatirlama_cerezini_temizle(): void {
+    if (!empty($_COOKIE[HATIRLAMA_COOKIE])) {
+        $secici = explode(':', $_COOKIE[HATIRLAMA_COOKIE], 2)[0] ?? '';
+        if ($secici !== '') {
+            hatirlama_tablosunu_hazirla();
+            db()->prepare("DELETE FROM hatirlama_jetonlari WHERE secici=?")->execute([$secici]);
+        }
+    }
+    setcookie(HATIRLAMA_COOKIE, '', hatirlama_cerez_ayarlari(-3600));
+    unset($_COOKIE[HATIRLAMA_COOKIE]);
+}
+
 // ─── Giriş Kontrolü ─────────────────────────────────────────
 function giris_kontrol(): array {
     oturum_baslat();
-    if (empty($_SESSION['kullanici_id'])) {
-        header('Location: /login.php');
-        exit;
+
+    $suresi_doldu = !empty($_SESSION['kullanici_id'])
+        && !empty($_SESSION['son_islem'])
+        && (time() - $_SESSION['son_islem']) > SESSION_SURE;
+
+    if (empty($_SESSION['kullanici_id']) || $suresi_doldu) {
+        if ($suresi_doldu) {
+            session_unset();
+            session_destroy();
+            // session_destroy() sonrası session "aktif" sayılmaz; oturumu_hatirlama_ile_dene()
+            // içindeki session_regenerate_id() çalışabilsin diye taze bir oturum başlatılır.
+            session_start();
+        }
+        if (!oturumu_hatirlama_ile_dene()) {
+            header('Location: /login.php' . ($suresi_doldu ? '?mesaj=suresi_doldu' : ''));
+            exit;
+        }
     }
-    // Oturum süresi kontrolü
-    if (!empty($_SESSION['son_islem']) && (time() - $_SESSION['son_islem']) > SESSION_SURE) {
-        session_destroy();
-        header('Location: /login.php?mesaj=suresi_doldu');
-        exit;
-    }
+
     $_SESSION['son_islem'] = time();
     return [
         'id'            => (int)$_SESSION['kullanici_id'],

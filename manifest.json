@@ -2,7 +2,7 @@
   "name": "AYS - Apartman Yönetim Sistemi",
   "short_name": "AYS",
   "description": "Apartman ve site yönetimleri için aidat, gider ve raporlama yazılımı.",
-  "start_url": "/dashboard.php",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",

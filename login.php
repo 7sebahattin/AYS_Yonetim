@@ -6,8 +6,9 @@
 require_once 'config.php';
 require_once 'includes/functions.php';
 oturum_baslat();
+oturumu_hatirlama_ile_dene();
 
-// Zaten giriş yapmışsa dashboard'a yönlendir
+// Zaten giriş yapmışsa (ya da "Beni Hatırla" ile sessizce girdiyse) dashboard'a yönlendir
 if (!empty($_SESSION['kullanici_id'])) {
     header('Location: /dashboard.php');
     exit;
@@ -45,8 +46,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['kullanici_adi'] = $k['kullanici_adi'];
                 $_SESSION['apartman_adi']  = $k['apartman_adi'];
                 $_SESSION['toplam_daire']  = $k['toplam_daire'];
-                $_SESSION['tema']          = $k['tema'] ?? 'koyu'; 
+                $_SESSION['tema']          = $k['tema'] ?? 'koyu';
                 $_SESSION['son_islem']     = time();
+
+                if (!empty($_POST['beni_hatirla'])) {
+                    hatirlama_jetonu_baslat((int)$k['id']);
+                }
 
                 // Log kaydet
                 db()->prepare("INSERT INTO oturum_loglari (kullanici_id, ip_adresi) VALUES (?, ?)")
@@ -171,6 +176,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <label>Şifre</label>
       <input type="password" name="sifre" class="input" placeholder="••••••••" required>
     </div>
+    <label class="checkbox-row">
+      <input type="checkbox" name="beni_hatirla" value="1">
+      <span>Beni Hatırla</span>
+    </label>
     <button type="submit" class="btn btn-primary btn-block">Giriş Yap</button>
   </form>
 
@@ -207,7 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <?php endif; ?>
 
   <p style="text-align:center;margin-top:20px;font-size:12.5px;color:var(--muted)">
-    <a href="/" style="color:var(--muted)">← Tanıtım sayfasına dön</a>
+    <a href="/" style="color:var(--muted)">← Anasayfaya dön</a>
   </p>
 </div>
 
