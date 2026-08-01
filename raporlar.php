@@ -85,10 +85,10 @@ include 'includes/header.php';
       <?php foreach ($daire_listesi as $r): ?>
       <tr>
         <td><strong class="daire-badge">#<?= e($r['daire_no']) ?></strong></td>
-        <td><?= e($r['sakin_adi'] ?: '—') ?></td>
+        <td><?= $r['sakin_adi'] ? e_buyuk($r['sakin_adi']) : '—' ?></td>
         <td><?= para((float)($r['odenen_tutar'] ?? $r['aylik_aidat'])) ?></td>
         <td><?= tarih_format($r['odeme_tarihi'] ?? '') ?></td>
-        <td><?= e($r['dekont_no'] ?: '—') ?></td>
+        <td><?= $r['dekont_no'] ? e_buyuk($r['dekont_no']) : '—' ?></td>
         <td><span class="badge badge-<?= ($r['durum']??'bekliyor')==='odendi'?'success':'warning' ?>">
           <?= ($r['durum'] ?? 'bekliyor') === 'odendi' ? '✓ Ödendi' : '⏳ Bekliyor' ?>
         </span></td>
@@ -119,8 +119,8 @@ include 'includes/header.php';
       <?php endif; ?>
       <?php foreach ($gider_listesi as $g): ?>
       <tr>
-        <td><span class="badge badge-cat"><?= e($g['kategori']) ?></span></td>
-        <td><?= e($g['aciklama']) ?></td>
+        <td><span class="badge badge-cat"><?= e_buyuk($g['kategori']) ?></span></td>
+        <td><?= e_buyuk($g['aciklama']) ?></td>
         <td style="color:#e94560"><strong><?= para((float)$g['tutar']) ?></strong></td>
         <td><?= tarih_format($g['tarih']) ?></td>
       </tr>

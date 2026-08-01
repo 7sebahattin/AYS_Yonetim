@@ -14,8 +14,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $islem = $_POST['islem'] ?? '';
 
     if ($islem === 'apartman_guncelle') {
-        $apartman_adi = trim($_POST['apartman_adi'] ?? '');
-        $adres        = trim($_POST['adres'] ?? '');
+        $apartman_adi = buyuk($_POST['apartman_adi'] ?? '');
+        $adres        = buyuk($_POST['adres'] ?? '');
         $telefon      = trim($_POST['telefon'] ?? '');
         $tema         = $_POST['tema'] === 'acik' ? 'acik' : 'koyu'; // Tema verisini aldık
 
@@ -64,11 +64,11 @@ include 'includes/header.php';
       <div class="form-grid">
         <div class="form-group full-width">
           <label>Apartman Adı <span class="req">*</span></label>
-          <input type="text" name="apartman_adi" class="input" value="<?= e($info['apartman_adi']) ?>" required>
+          <input type="text" name="apartman_adi" class="input buyuk" value="<?= e($info['apartman_adi']) ?>" required>
         </div>
         <div class="form-group full-width">
           <label>Adres</label>
-          <input type="text" name="adres" class="input" value="<?= e($info['adres']) ?>" placeholder="Mahalle, sokak, il...">
+          <input type="text" name="adres" class="input buyuk" value="<?= e($info['adres']) ?>" placeholder="Mahalle, sokak, il...">
         </div>
         <div class="form-group">
           <label>Telefon</label>

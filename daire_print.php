@@ -64,7 +64,7 @@ echo print_controls();
             </tr>
             <tr>
                 <td style="background:#f8f9fa;font-weight:600">Sakin Adı:</td>
-                <td><?= e($daire['sakin_adi'] ?: '—') ?></td>
+                <td><?= $daire['sakin_adi'] ? e_buyuk($daire['sakin_adi']) : '—' ?></td>
             </tr>
             <tr>
                 <td style="background:#f8f9fa;font-weight:600">Telefon:</td>
@@ -139,8 +139,8 @@ echo print_controls();
                             </span>
                         </td>
                         <td class="text-center"><?= tarih_format($a['odeme_tarihi'] ?? '') ?></td>
-                        <td><?= e($a['dekont_no'] ?: '—') ?></td>
-                        <td style="font-size:9pt;color:#666"><?= e($a['notlar'] ?: '—') ?></td>
+                        <td><?= $a['dekont_no'] ? e_buyuk($a['dekont_no']) : '—' ?></td>
+                        <td style="font-size:9pt;color:#666"><?= $a['notlar'] ? e_buyuk($a['notlar']) : '—' ?></td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>

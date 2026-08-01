@@ -17,12 +17,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ── Daire Güncelle ───────────────────────────────────────
     if ($islem === 'guncelle') {
         $id          = (int)$_POST['id'];
-        $sakin_adi   = trim($_POST['sakin_adi'] ?? '');
+        $sakin_adi   = buyuk($_POST['sakin_adi'] ?? '');
         $telefon     = trim($_POST['telefon'] ?? '');
         $eposta      = trim($_POST['eposta'] ?? '');
         $aylik_aidat = max(0, (float)str_replace(',', '.', $_POST['aylik_aidat'] ?? 0));
         $kat         = $_POST['kat'] !== '' ? (int)$_POST['kat'] : null;
-        $notlar      = trim($_POST['notlar'] ?? '');
+        $notlar      = buyuk($_POST['notlar'] ?? '');
 
         $stmt = $db->prepare("SELECT id FROM daireler WHERE id=? AND kullanici_id=?");
         $stmt->execute([$id, $kullanici['id']]);
@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $db->prepare("INSERT INTO daireler (kullanici_id, daire_no, sakin_adi, telefon, eposta, aylik_aidat, notlar)
                           VALUES (?, ?, ?, ?, ?, ?, ?)")
-               ->execute([$kullanici['id'], $daire_no, trim($_POST['sakin_adi'] ?? ''), trim($_POST['telefon'] ?? ''), trim($_POST['eposta'] ?? ''), $aylik_aidat, trim($_POST['notlar'] ?? '')]);
+               ->execute([$kullanici['id'], $daire_no, buyuk($_POST['sakin_adi'] ?? ''), trim($_POST['telefon'] ?? ''), trim($_POST['eposta'] ?? ''), $aylik_aidat, buyuk($_POST['notlar'] ?? '')]);
             flash("Daire #$daire_no eklendi.");
         }
     }
@@ -109,7 +109,7 @@ include 'includes/header.php';
       <tr style="cursor:pointer" onclick="window.location='/daire_detay.php?id=<?= $d['id'] ?>'">
         <td><strong class="daire-badge">#<?= e($d['daire_no']) ?></strong></td>
         <td><?= $d['kat'] !== null ? e($d['kat'].'. Kat') : '—' ?></td>
-        <td><?= $d['sakin_adi'] ? e($d['sakin_adi']) : '<em class="muted">Boş</em>' ?></td>
+        <td><?= $d['sakin_adi'] ? e_buyuk($d['sakin_adi']) : '<em class="muted">Boş</em>' ?></td>
         <td><?= e($d['telefon'] ?: '—') ?></td>
         <td><?= e($d['eposta'] ?: '—') ?></td>
         <td><strong><?= para((float)$d['aylik_aidat']) ?></strong></td>
@@ -152,7 +152,7 @@ include 'includes/header.php';
       <div class="form-grid">
         <div class="form-group">
           <label>Sakin Adı</label>
-          <input type="text" name="sakin_adi" class="input" value="<?= e($duzenle['sakin_adi']) ?>" placeholder="Ad Soyad">
+          <input type="text" name="sakin_adi" class="input buyuk" value="<?= e($duzenle['sakin_adi']) ?>" placeholder="Ad Soyad">
         </div>
         <div class="form-group">
           <label>Kat</label>
@@ -172,7 +172,7 @@ include 'includes/header.php';
         </div>
         <div class="form-group full-width">
           <label>Notlar</label>
-          <textarea name="notlar" class="input" rows="2" placeholder="Ek bilgi..."><?= e($duzenle['notlar']) ?></textarea>
+          <textarea name="notlar" class="input buyuk" rows="2" placeholder="Ek bilgi..."><?= e($duzenle['notlar']) ?></textarea>
         </div>
       </div>
       <div class="modal-footer">
@@ -204,7 +204,7 @@ include 'includes/header.php';
         </div>
         <div class="form-group">
           <label>Sakin Adı</label>
-          <input type="text" name="sakin_adi" class="input" placeholder="Ad Soyad">
+          <input type="text" name="sakin_adi" class="input buyuk" placeholder="Ad Soyad">
         </div>
         <div class="form-group">
           <label>Aylık Aidat (₺)</label>
