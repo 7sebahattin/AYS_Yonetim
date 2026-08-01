@@ -17,7 +17,8 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 
 ```
 /
-├─ index.php              → Giriş / kayıt
+├─ index.php              → Tanıtım (landing) sayfası — herkese açık, SEO odaklı
+├─ login.php              → Giriş / kayıt
 ├─ dashboard.php          → Ana panel
 ├─ daireler.php           → Daire yönetimi
 ├─ daire_detay.php        → Daire bazlı dönem geçmişi ve toplu ödeme
@@ -29,15 +30,35 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 ├─ cikis.php              → Çıkış
 ├─ config.php             → Veritabanı bağlantı ayarları
 ├─ includes/              → Ortak fonksiyonlar, header/footer, yazdırma yardımcıları
-└─ assets/                → CSS dosyaları
+└─ assets/                → CSS dosyaları (style.css: panel, landing.css: tanıtım sayfası)
 ```
+
+**Sayfa akışı:** `/` (tanıtım) → `login.php` (giriş/kayıt) → `dashboard.php` (panel).
+Oturumu açık bir kullanıcı `/` veya `login.php` adresine giderse doğrudan panele
+yönlendirilir; oturumu olmayan kullanıcı panel sayfalarından `login.php`'ye döner.
 
 ## Kurulum
 
 1. **Veritabanı**: MySQL/MariaDB üzerinde bir veritabanı oluşturun ve şemayı içe aktarın (uygulamayla birlikte gelen SQL dump'ı kullanarak `kullanicilar`, `daireler`, `aidatlar`, `giderler`, `oturum_loglari` tablolarını kurun). **SQL dump'ı asla gerçek kullanıcı verisiyle birlikte herkese açık bir repoya yüklemeyin.**
 2. **`config.php`**: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS` değerlerini kendi sunucunuza göre düzenleyin. Bu dosya gerçek kimlik bilgileriyle **asla** versiyon kontrolüne eklenmemelidir (`.gitignore` bu tür dosyaları hariç tutacak şekilde ayarlanmalıdır; gerekirse `config.php`'yi yerel bir kopya olarak tutup repodakini placeholder değerlerle bırakın).
 3. Dosyaları PHP 8+ destekleyen bir web sunucusuna (Apache/Nginx + PHP-FPM veya cPanel) yükleyin, belge kökünü proje köküne işaretleyin.
-4. `https://<alan-adiniz>/index.php` adresinden "Yeni Kayıt" ile ilk apartman hesabınızı oluşturun.
+4. `https://<alan-adiniz>/` adresindeki tanıtım sayfasından **Hemen Başla** ile (ya da doğrudan `login.php?mod=kayit` adresinden) ilk apartman hesabınızı oluşturun.
+5. **SEO**: Tanıtım sayfasındaki canonical ve Open Graph adresleri `index.php` başındaki `$site_url` değişkeninden gelir. Alan adınız farklıysa bu değeri güncelleyin.
+
+## Tanıtım Sayfası & SEO
+
+Kök adres (`index.php`) herkese açık bir tanıtım sayfasıdır: hero, özellik kartları,
+"Neden AYS?" bölümü, accordion SSS ve footer içerir. Arama motoru görünürlüğü için:
+
+- Anahtar kelime odaklı `<title>`, meta description ve keywords (*apartman yönetim
+  yazılımı*, *site aidat takip sistemi* vb.), `canonical`, Open Graph ve Twitter Card etiketleri.
+- **JSON-LD yapısal veri**: `SoftwareApplication` künyesi + `FAQPage`. SSS içeriği tek
+  bir PHP dizisinden hem sayfaya hem yapısal veriye yazılır; böylece Google'ın
+  uyuşmazlık cezasına yol açan HTML ↔ schema farkı oluşamaz.
+- SSS accordion'u JavaScript'siz `<details>/<summary>` ile kurulmuştur — içerik ilk
+  HTML yanıtında yer aldığı için tarayıcı ve arama motoru tarafından okunabilir.
+- `login.php` `noindex, follow` ile işaretlidir; ince/yinelenen içeriğin indekslenmesini
+  önleyip indeks gücünü tanıtım sayfasında toplar.
 
 ## Güvenlik Notları
 
