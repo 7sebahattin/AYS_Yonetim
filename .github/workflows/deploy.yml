@@ -25,7 +25,12 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           port: 21
           server-dir: ays.derspros.com.tr/
-          protocol: ftp
+          # Sunucu cleartext FTP'yi reddediyor (421 "Please reconnect using TLS
+          # security mechanisms"), bu yüzden port 21 üzerinden explicit FTPS.
+          protocol: ftps
+          # Sertifika ftp.derspros.com.tr yerine sunucu adına (talom.wlsrv.com)
+          # düzenlendiğinden strict doğrulama hostname uyuşmazlığında patlar.
+          security: loose
           dangerous-clean-slate: false
           exclude: |
             **/.git*
