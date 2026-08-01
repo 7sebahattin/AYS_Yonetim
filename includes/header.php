@@ -31,10 +31,15 @@ $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0d0d1a">
+  <meta name="apple-mobile-web-app-title" content="AYS">
   <title><?= e($sayfa_basligi ?? 'Panel') ?> — <?= e($kullanici['apartman_adi']) ?></title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/assets/icons/favicon-32.png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/style.css?v=final">
+  <script src="/assets/pwa-install.js" defer></script>
 </head>
 <body data-theme="<?= e($kullanici['tema'] ?? 'koyu') ?>">
 

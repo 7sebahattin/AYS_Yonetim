@@ -114,14 +114,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0d0d1a">
   <title>Giriş Yap — AYS Apartman Yönetim Sistemi</title>
   <!-- Giriş ekranı arama sonuçlarında görünmemeli; tanıtım için index.php indekslenir -->
   <meta name="robots" content="noindex, follow">
   <link rel="canonical" href="/login.php">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/assets/icons/favicon-32.png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/style.css">
+  <script src="/assets/pwa-install.js" defer></script>
 </head>
 <body class="auth-body">
 

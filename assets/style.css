@@ -316,15 +316,23 @@ textarea.input{resize:vertical;min-height:80px}
   .toolbar{flex-direction:row;align-items:center;flex-wrap:wrap;gap:8px}
   .toolbar-left{flex:1;min-width:0}
   .toolbar-right{flex-shrink:0;flex-wrap:wrap !important; gap:6px;}
-  .toolbar-right .btn{padding:8px 12px;font-size:12px;min-height:36px}
-  
+  .toolbar-right .btn{padding:8px 12px;font-size:12px;min-height:44px}
+
   .trend-amount{display:none}
   .auth-card{padding:28px 20px;border-radius:20px}
   .modal{border-radius:22px 22px 0 0!important;max-width:100%!important}
-  
+
   /* Mobil Header Çarpışma Önleme */
   .mobile-page-title { display: none !important; }
   .mobile-brand-text { max-width: 110px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ── Dokunmatik hedefler: mobilde en az 44px yükseklik ──── */
+  .btn-sm{min-height:44px;padding:6px 14px}
+  .btn-xs{min-height:44px;padding:5px 14px}
+  .filter-tab{min-height:44px;padding:7px 16px}
+  .tab-btn{min-height:44px;display:flex;align-items:center;justify-content:center}
+  .input-sm{min-height:44px}
+  .mobile-donem-select{min-height:44px;padding:7px 10px}
 }
 
 @media(max-width:389px){
@@ -341,6 +349,38 @@ textarea.input{resize:vertical;min-height:80px}
 
 @media(min-width:1400px){
   .stats-grid{grid-template-columns:repeat(4,1fr)}
+}
+
+/* ══ PWA YÜKLEME BANNER'I ══════════════════════════════════════ */
+.pwa-install-banner{
+  position:fixed;left:12px;right:12px;
+  bottom:calc(var(--safe-bottom) + 12px);
+  z-index:400;
+  display:flex;align-items:center;gap:12px;
+  background:rgba(24,24,40,.97);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border:1px solid var(--border2);border-radius:16px;
+  padding:14px 14px;
+  box-shadow:0 -8px 32px rgba(0,0,0,.5);
+  animation:slideUp .3s cubic-bezier(.22,1,.36,1);
+}
+.pwa-install-banner[hidden]{display:none}
+.pwa-install-icon{
+  flex-shrink:0;width:42px;height:42px;border-radius:11px;
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  box-shadow:0 4px 14px var(--glow);
+}
+.pwa-install-text{flex:1;min-width:0}
+.pwa-install-text strong{display:block;font-size:13.5px;color:var(--text);margin-bottom:2px}
+.pwa-install-text span{display:block;font-size:12px;color:var(--muted);line-height:1.4}
+.pwa-install-actions{display:flex;gap:8px;flex-shrink:0}
+
+body.has-bottom-nav .pwa-install-banner{
+  bottom:calc(var(--bnav-h) + var(--safe-bottom) + 10px);
+}
+@media(min-width:768px){
+  .pwa-install-banner{left:auto;right:24px;bottom:24px;max-width:360px}
+  body.has-bottom-nav .pwa-install-banner{bottom:24px}
 }
 
 /* ══ PRINT ══════════════════════════════════════════════════ */
