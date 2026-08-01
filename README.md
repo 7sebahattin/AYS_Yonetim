@@ -12,6 +12,7 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 - Dashboard ve raporlar (tahsilat oranı, 12 aylık gelir/gider trendi)
 - Yazdırılabilir A4 raporlar (aidat, gider, trend, tam rapor, daire detay raporu)
 - Açık/koyu tema
+- Progressive Web App: ana ekrana yüklenebilir, uygulama gibi açılır
 
 ## Klasör Yapısı
 
@@ -29,8 +30,15 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 ├─ ayarlar.php            → Hesap / apartman / tema ayarları
 ├─ cikis.php              → Çıkış
 ├─ config.php             → Veritabanı bağlantı ayarları
+├─ manifest.json          → PWA manifest (ad, ikonlar, tema rengi)
+├─ sw.js                  → Service worker (yalnızca statik varlıkları önbelleğe alır)
+├─ offline.html           → Çevrimdışı iken gösterilen jenerik sayfa
 ├─ includes/              → Ortak fonksiyonlar, header/footer, yazdırma yardımcıları
-└─ assets/                → CSS dosyaları (style.css: panel, landing.css: tanıtım sayfası)
+└─ assets/                → CSS/JS dosyaları
+   ├─ style.css            → Panel stilleri (mobil dahil)
+   ├─ landing.css           → Tanıtım sayfası stilleri
+   ├─ pwa-install.js        → SW kaydı + "Uygulamayı Yükle" banner'ı
+   └─ icons/                → PWA/apple-touch/favicon ikonları
 ```
 
 **Sayfa akışı:** `/` (tanıtım) → `login.php` (giriş/kayıt) → `dashboard.php` (panel).
@@ -60,6 +68,28 @@ Kök adres (`index.php`) herkese açık bir tanıtım sayfasıdır: hero, özell
 - `login.php` `noindex, follow` ile işaretlidir; ince/yinelenen içeriğin indekslenmesini
   önleyip indeks gücünü tanıtım sayfasında toplar.
 
+## PWA (Progressive Web App)
+
+Uygulama ana ekrana yüklenip bağımsız bir uygulama gibi açılabilir.
+
+- **`manifest.json`**: uygulama adı, ikonlar (`any` + `maskable` varyantları), `standalone`
+  görünüm ve marka renkleri (`#0d0d1a`). `start_url` `dashboard.php`'dir; oturumsuz
+  kullanıcı normal akışla `login.php`'ye yönlendirilir.
+- **`sw.js`**: **yalnızca gerçekten statik dosyaları** (`assets/*.css`, ikonlar, manifest)
+  cache-first + arka planda güncelleme stratejisiyle önbelleğe alır. Oturuma bağlı veya
+  mali veri içeren `.php` sayfaları **kesinlikle önbelleklenmez** — bunlar her zaman
+  ağdan (network-only) yüklenir; çevrimdışıyken yalnızca jenerik `offline.html` gösterilir.
+  Bu ayrım kasıtlıdır: aidat/gider gibi finansal verinin cihazda bayat veya güvenli
+  olmayan şekilde önbellekte kalmasını önler.
+- **`assets/pwa-install.js`**: service worker'ı kaydeder ve tarayıcının
+  `beforeinstallprompt` olayını yakalayıp alt kısımda bir "Uygulamayı Yükle" banner'ı
+  gösterir. Kullanıcı kapatırsa tercih `localStorage`'da saklanır (14 gün boyunca tekrar
+  sorulmaz). iOS Safari `beforeinstallprompt` desteklemediğinden orada "Paylaş → Ana
+  Ekrana Ekle" talimatı içeren bir banner gösterilir. Uygulama zaten `standalone` modda
+  çalışıyorsa banner hiç gösterilmez.
+- İkonlar `assets/icons/` altındadır ve `python -c` ile üretilen basit, marka renklerine
+  uygun PNG dosyalarıdır (192/512 + maskable varyantları + `apple-touch-icon`).
+
 ## Güvenlik Notları
 
 - Tüm veritabanı sorguları PDO prepared statement kullanır; ham SQL birleştirmesi yoktur.
@@ -80,6 +110,18 @@ Kök adres (`index.php`) herkese açık bir tanıtım sayfasıdır: hero, özell
 
 - Dönem oluşturma (`aidatlar.php` → "Dönem(ler) Oluştur") tüm daire × dönem kayıtlarını tek tek değil, 500'lük partiler halinde toplu (multi-row) `INSERT IGNORE` ile yazar.
 - Raporlar ve yazdırma sayfalarındaki (`raporlar.php`, `print.php`) gelir/gider trend hesaplaması, ay başına iki ayrı sorgu çalıştırmak yerine `includes/functions.php` içindeki `trend_verisi()` fonksiyonuyla tek bir `GROUP BY donem` sorgusu üzerinden yapılır.
+
+## Mobil Uyumluluk
+
+- Tüm veri tabloları (`daireler.php`, `aidatlar.php`, `raporlar.php`, `daire_detay.php`,
+  `giderler.php`) `.table-wrap` içinde yatay kaydırmalıdır; tablo daralınca sütunlar
+  kırılmaz, kullanıcı yatay kaydırır (`overflow-x:auto`, dokunmatik ivmeli kaydırma).
+- Dokunmatik hedefler (küçük butonlar, filtre sekmeleri, giriş sekmeleri, dönem seçici)
+  320–767px genişlikte en az 44px yüksekliğe sahiptir (`assets/style.css` içindeki
+  `@media(max-width:767px)` bloğu).
+- `viewport-fit=cover` + `env(safe-area-inset-*)` ile iOS'ta çentik/alt çubuk alanları
+  (Dynamic Island, home indicator) sabit üst/alt barların ve PWA yükleme banner'ının
+  altında/üstünde kalmaz.
 
 ## Otomatik Deploy (GitHub Actions)
 

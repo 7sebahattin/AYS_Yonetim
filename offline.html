@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Bağlantı Yok — AYS</title>
+<style>
+  :root{--surface:#0d0d1a;--accent:#e94560;--accent2:#c73652;--text:#e8e8f0;--muted:#7a7a9a}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    min-height:100dvh;display:flex;align-items:center;justify-content:center;
+    background:var(--surface);color:var(--text);
+    font-family:-apple-system,'DM Sans',Helvetica,Arial,sans-serif;
+    padding:24px;text-align:center;
+  }
+  .icon{
+    width:64px;height:64px;border-radius:16px;margin:0 auto 18px;
+    display:flex;align-items:center;justify-content:center;font-size:30px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+  }
+  h1{font-size:19px;margin-bottom:8px}
+  p{font-size:14px;color:var(--muted);max-width:320px;margin:0 auto 20px;line-height:1.6}
+  button{
+    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;
+    padding:12px 22px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;min-height:44px;
+  }
+</style>
+</head>
+<body>
+  <div>
+    <div class="icon">🏢</div>
+    <h1>İnternet bağlantısı yok</h1>
+    <p>AYS panelindeki güncel verilere ulaşmak için bağlantınızın olması gerekir. Bağlantınız geri geldiğinde tekrar deneyin.</p>
+    <button onclick="location.reload()">Tekrar Dene</button>
+  </div>
+</body>
+</html>
