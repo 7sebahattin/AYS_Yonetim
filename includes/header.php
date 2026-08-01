@@ -1,0 +1,138 @@
+<?php
+// ============================================================
+//  includes/header.php — FINAL FIX
+// ============================================================
+$kullanici    = giris_kontrol();
+$aktif_donem  = $_GET['donem'] ?? date('Y-m');
+$aktif_sayfa  = basename($_SERVER['PHP_SELF']);
+
+// Alt nav: SIRA BU ŞEKİLDE SABİT
+$menu = [
+  ['dosya'=>'dashboard.php', 'etiket'=>'Ana Sayfa', 'ikon'=>'🏠'],
+  ['dosya'=>'daireler.php',  'etiket'=>'Daireler',  'ikon'=>'🏢'],
+  ['dosya'=>'aidatlar.php',  'etiket'=>'Aidatlar',  'ikon'=>'💰'],
+  ['dosya'=>'giderler.php',  'etiket'=>'Giderler',  'ikon'=>'📋'],
+];
+
+// Daha paneli
+$more_pages = [
+  ['dosya'=>'raporlar.php', 'etiket'=>'Raporlar', 'ikon'=>'📊'],
+  ['dosya'=>'ayarlar.php',  'etiket'=>'Ayarlar',  'ikon'=>'⚙️'],
+  ['dosya'=>'cikis.php',    'etiket'=>'Çıkış',    'ikon'=>'🚪'],
+];
+$more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
+?>
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0d0d1a">
+  <title><?= e($sayfa_basligi ?? 'Panel') ?> — <?= e($kullanici['apartman_adi']) ?></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/style.css?v=final">
+</head>
+<body data-theme="<?= e($kullanici['tema'] ?? 'koyu') ?>">
+
+<!-- ══ DESKTOP SIDEBAR ══════════════════════════════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">🏢</div>
+    <div>
+      <div class="brand-name"><?= e($kullanici['apartman_adi']) ?></div>
+      <div class="brand-user"><?= e($kullanici['kullanici_adi']) ?></div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <?php foreach (array_merge($menu, [['dosya'=>'raporlar.php','etiket'=>'Raporlar','ikon'=>'📊']]) as $m): ?>
+    <a href="/<?= $m['dosya'] ?>" class="nav-item <?= $aktif_sayfa === $m['dosya'] ? 'active' : '' ?>">
+      <span class="nav-icon"><?= $m['ikon'] ?></span> <?= e($m['etiket']) ?>
+    </a>
+    <?php endforeach; ?>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="/ayarlar.php" class="nav-item <?= $aktif_sayfa === 'ayarlar.php' ? 'active' : '' ?>">
+      <span class="nav-icon">⚙️</span> Ayarlar
+    </a>
+    <a href="/cikis.php" class="nav-item nav-logout">
+      <span class="nav-icon">🚪</span> Çıkış
+    </a>
+  </div>
+</aside>
+
+<!-- ══ MOBİL TOPBAR ════════════════════════════════════════ -->
+<header class="mobile-topbar">
+  <div class="mobile-topbar-brand">
+    <div class="mobile-brand-icon">🏢</div>
+    <div>
+      <div class="mobile-brand-text"><?= e($kullanici['apartman_adi']) ?></div>
+      <div class="mobile-brand-sub"><?= e($kullanici['kullanici_adi']) ?></div>
+    </div>
+  </div>
+  <span class="mobile-page-title"><?= e($sayfa_basligi ?? '') ?></span>
+  <form method="get" style="display:flex; align-items:center; gap:6px;">
+    <label style="font-size:11px; font-weight:700; color:var(--accent);">Dönem Seç:</label>
+    <select name="donem" class="mobile-donem-select donem-highlight" onchange="this.form.submit()">
+      <?php foreach (donem_listesi_genisletilmis() as $d): ?>
+      <option value="<?= e($d) ?>" <?= $d === $aktif_donem ? 'selected' : '' ?>><?= e(donem_adi($d)) ?></option>
+      <?php endforeach; ?>
+    </select>
+  </form>
+</header>
+
+<!-- ══ MOBİL BOTTOM NAV — SABİT SIRALAMA ══════════════════ -->
+<nav class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <?php foreach ($menu as $m): ?>
+    <?php $is_active = $aktif_sayfa === $m['dosya']; ?>
+    <a href="/<?= $m['dosya'] ?>" class="bnav-item <?= $is_active ? 'active' : '' ?>">
+      <span class="bnav-icon-wrap <?= $is_active ? 'active' : '' ?>">
+        <span class="bnav-icon"><?= $m['ikon'] ?></span>
+      </span>
+      <span class="bnav-label"><?= e($m['etiket']) ?></span>
+    </a>
+    <?php endforeach; ?>
+    
+    <!-- Daha butonu -->
+    <button type="button" class="bnav-item <?= $more_active ? 'active' : '' ?>" onclick="toggleMorePanel()">
+      <span class="bnav-icon-wrap <?= $more_active ? 'active' : '' ?>">
+        <span class="bnav-icon">⋯</span>
+      </span>
+      <span class="bnav-label">Daha</span>
+    </button>
+  </div>
+</nav>
+
+<!-- More Panel -->
+<div class="bnav-overlay" id="bnav-overlay" onclick="closeMorePanel()"></div>
+<div class="bnav-more-panel" id="bnav-more-panel">
+  <div class="bnav-more-grid">
+    <?php foreach ($more_pages as $m): ?>
+    <a href="/<?= $m['dosya'] ?>" class="bnav-more-item <?= $aktif_sayfa === $m['dosya'] ? 'active-more' : '' ?>">
+      <span class="bmi"><?= $m['ikon'] ?></span>
+      <?= e($m['etiket']) ?>
+    </a>
+    <?php endforeach; ?>
+  </div>
+</div>
+
+<!-- ══ DESKTOP TOPBAR ═══════════════════════════════════════ -->
+<div class="main-wrap">
+  <header class="top-bar">
+    <h1 class="page-title"><?= e($sayfa_basligi ?? '') ?></h1>
+    <form method="get" style="display:flex;align-items:center;gap:8px">
+      <label style="font-size:13px;font-weight:700;color:var(--accent);">Dönem Seç:</label>
+      <select name="donem" class="input input-sm donem-highlight" style="width:auto" onchange="this.form.submit()">
+        <?php foreach (donem_listesi_genisletilmis() as $d): ?>
+        <option value="<?= e($d) ?>" <?= $d === $aktif_donem ? 'selected' : '' ?>><?= e(donem_adi($d)) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </form>
+  </header>
+
+  <div class="page-content">
+    <?= flash_goster() ?>
