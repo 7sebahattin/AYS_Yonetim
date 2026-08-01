@@ -59,3 +59,22 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 
 - Dönem oluşturma (`aidatlar.php` → "Dönem(ler) Oluştur") tüm daire × dönem kayıtlarını tek tek değil, 500'lük partiler halinde toplu (multi-row) `INSERT IGNORE` ile yazar.
 - Raporlar ve yazdırma sayfalarındaki (`raporlar.php`, `print.php`) gelir/gider trend hesaplaması, ay başına iki ayrı sorgu çalıştırmak yerine `includes/functions.php` içindeki `trend_verisi()` fonksiyonuyla tek bir `GROUP BY donem` sorgusu üzerinden yapılır.
+
+## Otomatik Deploy (GitHub Actions)
+
+`master` branch'ine her push/merge sonrasında `.github/workflows/deploy.yml` iş akışı çalışır ve dosyaları FTPS üzerinden sunucudaki `ays.derspros.com.tr/` dizinine gönderir. Actions sekmesindeki **Run workflow** butonuyla elle de tetiklenebilir.
+
+**Gerekli repository secret'ları** (Settings → Secrets and variables → Actions):
+
+| Secret adı | Değer |
+|---|---|
+| `FTP_USERNAME` | cPanel FTP kullanıcı adı |
+| `FTP_PASSWORD` | cPanel FTP şifresi |
+
+Sunucu adresi ve port hassas bilgi olmadığından workflow dosyasında sabit tanımlıdır.
+
+**Deploy davranışıyla ilgili notlar:**
+- Sunucu şifresiz (cleartext) FTP bağlantısını reddettiği için `protocol: ftps` (port 21 üzerinden explicit FTPS) kullanılır.
+- FTP sertifikası alan adı yerine sunucu adına düzenlendiğinden hostname uyuşmazlığını tolere etmek için `security: loose` ayarlanmıştır.
+- `config.php` **senkronize edilmez** — repodaki sürüm placeholder değerler içerir ve sunucudaki gerçek yapılandırmanın üzerine yazılmamalıdır. Aynı şekilde `README.md`, `.gitignore` ve `.github/` dizini de yüklenmez.
+- `dangerous-clean-slate: false` olduğundan sunucuda repoda bulunmayan dosyalar (`.well-known/`, `error_log` vb.) silinmez.
