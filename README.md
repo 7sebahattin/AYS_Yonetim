@@ -8,7 +8,7 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 - Daire yönetimi (ekle/düzenle/sil, sakin bilgisi, aylık aidat tutarı)
 - Dönem bazlı aidat/ödeme takibi, toplu dönem oluşturma, toplu/tekil ödeme girişi
 - WhatsApp üzerinden sakine borç/ödeme durumu mesajı hazırlama
-- Kategori bazlı gider takibi
+- Kategori bazlı gider takibi; kategori girişi serbest metin + öneri listesi (yazınca eşleşenler listelenir, eşleşme yoksa "ekle" seçeneği çıkar, her kullanıcı kendi kategori geçmişinden sorumludur)
 - Dashboard ve raporlar (tahsilat oranı, 12 aylık gelir/gider trendi)
 - Yazdırılabilir A4 raporlar (aidat, gider, trend, tam rapor, daire detay raporu)
 - Açık/koyu tema
@@ -89,6 +89,28 @@ Uygulama ana ekrana yüklenip bağımsız bir uygulama gibi açılabilir.
   çalışıyorsa banner hiç gösterilmez.
 - İkonlar `assets/icons/` altındadır ve `python -c` ile üretilen basit, marka renklerine
   uygun PNG dosyalarıdır (192/512 + maskable varyantları + `apple-touch-icon`).
+
+## Gider Kategorileri
+
+`giderler.php` içindeki "Kategori" alanı, sabit bir açılır liste yerine yazarken öneri
+sunan bir kombobox'tır: eşleşen kategoriler altta listelenir, hiçbiri eşleşmiyorsa yeşil
+bir "+ '…' kategorisini ekle" seçeneği çıkar. Bir gider kaydedildiğinde kullandığı
+kategori, o kullanıcının `gider_kategorileri` tablosundaki kişisel listesine yazılır
+(`INSERT IGNORE`, aynı isim tekrar eklenmeye çalışılırsa sessizce yok sayılır).
+
+- **`includes/functions.php` → `gider_kategorileri_tablosunu_hazirla()`**: tablo yoksa
+  `CREATE TABLE IF NOT EXISTS` ile kendiliğinden oluşturur — ayrı bir migration adımı
+  gerekmez, `giderler.php` her yüklendiğinde çağrılır ve var olan tabloda ucuzdur.
+- **Öneri kaynağı** (`gider_kategori_onerileri()`): varsayılan 11 kategori + kullanıcının
+  daha önce kaydettiği özel kategoriler + `giderler` tablosunda o kullanıcı için fiilen
+  kullanılmış (bu özellikten önce eklenmiş olabilecek) kategori adları — hepsi
+  büyük/küçük harf duyarsız tekilleştirilip alfabetik sıralanır. Bu sayede "Doğalgaz"ı
+  daha önce farklı büyük/küçük harfle girmiş bir kullanıcı için de aynı kategori önerilir.
+- **Kullanıcı izolasyonu**: `gider_kategorileri.kullanici_id` ile her yönetim yalnızca
+  kendi eklediği kategorileri görür/önerir; diğer apartmanların kategori listesine erişim
+  yoktur (`kullanicilar(id)` üzerine `ON DELETE CASCADE` yabancı anahtarla).
+- Kategori adı boş bırakılırsa sunucu tarafında `Diğer`'e düşer; 50 karaktere kırpılır
+  (`giderler.kategori` sütunuyla aynı sınır).
 
 ## Güvenlik Notları
 

@@ -351,6 +351,27 @@ textarea.input{resize:vertical;min-height:80px}
   .stats-grid{grid-template-columns:repeat(4,1fr)}
 }
 
+/* ══ KATEGORİ COMBOBOX (gider ekleme — yaz, listeden seç, yoksa ekle) ══ */
+.combo{position:relative}
+.combo-dropdown{
+  position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:20;
+  max-height:220px;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  background:#1a1a2e;border:1px solid var(--border2);border-radius:10px;
+  box-shadow:0 12px 32px rgba(0,0,0,.5);
+  padding:4px;
+}
+.combo-dropdown[hidden]{display:none}
+.combo-item{
+  padding:10px 12px;border-radius:7px;font-size:13.5px;color:var(--text);
+  cursor:pointer;transition:background .12s;min-height:36px;display:flex;align-items:center;
+}
+.combo-item:hover,.combo-item.combo-active{background:rgba(255,255,255,.08)}
+.combo-item-add{
+  color:var(--success);font-weight:600;
+  border-top:1px solid var(--border);margin-top:2px;padding-top:11px;
+}
+.combo-item-add:hover,.combo-item-add.combo-active{background:rgba(46,204,113,.14)}
+
 /* ══ PWA YÜKLEME BANNER'I ══════════════════════════════════════ */
 .pwa-install-banner{
   position:fixed;left:12px;right:12px;
@@ -456,6 +477,9 @@ body[data-theme="acik"] .bnav-item.active { color: #1e293b; }
 body[data-theme="acik"] .bnav-icon-wrap.active { box-shadow: 0 4px 12px var(--glow), 0 0 0 3px #fff, 0 0 0 5px rgba(233,69,96,.15); }
 body[data-theme="acik"] .bnav-more-panel { background: rgba(255,255,255,.98); box-shadow: 0 -8px 40px rgba(0,0,0,.15); }
 body[data-theme="acik"] .bnav-more-item { background: #f8fafc; border-color: #e2e8f0; color: #475569; }
+body[data-theme="acik"] .combo-dropdown { background: #ffffff; border-color: #e2e8f0; box-shadow: 0 12px 32px rgba(0,0,0,.12); }
+body[data-theme="acik"] .combo-item:hover, body[data-theme="acik"] .combo-item.combo-active { background: #f1f5f9; }
+body[data-theme="acik"] .combo-item-add { border-top-color: #e2e8f0; }
 body[data-theme="acik"] .daire-row-card { border-bottom: 1px solid #f1f5f9; }
 body[data-theme="acik"] .daire-row-card:active { background: #f8fafc; }
 body[data-theme="acik"] select.input option { background: #fff; color: #1e293b; }

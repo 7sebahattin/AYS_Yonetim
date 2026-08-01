@@ -170,6 +170,62 @@ function istatistikler(int $kullanici_id, string $donem): array {
     ];
 }
 
+// ─── Gider Kategorileri (kullanıcıya özel öneri listesi) ──────
+// Tablo yoksa kendiliğinden oluşturur (ayrı bir migration adımı
+// gerektirmez). Var olan tabloda tekrar çağrılması ucuzdur.
+function gider_kategorileri_tablosunu_hazirla(): void {
+    db()->exec("
+        CREATE TABLE IF NOT EXISTS gider_kategorileri (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            kullanici_id INT UNSIGNED NOT NULL,
+            ad VARCHAR(50) NOT NULL,
+            olusturma DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_kullanici_kategori (kullanici_id, ad),
+            KEY fk_giderkat_kullanici (kullanici_id),
+            CONSTRAINT fk_giderkat_kullanici FOREIGN KEY (kullanici_id)
+                REFERENCES kullanicilar (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci
+    ");
+}
+
+// Bir kullanıcı için gider kategori önerileri: varsayılan liste +
+// kullanıcının daha önce eklediği özel kategoriler + geçmişte
+// giderler.kategori'de fiilen kullanılmış değerler (tekilleştirilmiş).
+function gider_kategori_onerileri(int $kullanici_id): array {
+    $varsayilan = ['Temizlik', 'Elektrik', 'Su', 'Doğalgaz', 'Asansör',
+                   'Bahçe', 'Güvenlik', 'Tamirat', 'Yönetim', 'Sigorta', 'Diğer'];
+
+    $db = db();
+    $ozel = $db->prepare("SELECT ad FROM gider_kategorileri WHERE kullanici_id=? ORDER BY ad");
+    $ozel->execute([$kullanici_id]);
+    $ozel = $ozel->fetchAll(PDO::FETCH_COLUMN);
+
+    $gecmis = $db->prepare("SELECT DISTINCT kategori FROM giderler WHERE kullanici_id=? AND kategori<>''");
+    $gecmis->execute([$kullanici_id]);
+    $gecmis = $gecmis->fetchAll(PDO::FETCH_COLUMN);
+
+    $tumu = [];
+    foreach (array_merge($varsayilan, $ozel, $gecmis) as $ad) {
+        $anahtar = mb_strtolower(trim($ad), 'UTF-8');
+        if ($anahtar === '' || isset($tumu[$anahtar])) continue;
+        $tumu[$anahtar] = trim($ad);
+    }
+    $liste = array_values($tumu);
+    natcasesort($liste);
+    return array_values($liste);
+}
+
+// Yeni bir gider eklenirken kullanıcının özel kategori listesine kaydeder
+// (varsayılan listedeki isimler için de zararsızdır — yalnızca kişisel
+// öneri havuzunu büyütür, tekrar eklemede sessizce yok sayılır).
+function gider_kategori_kaydet(int $kullanici_id, string $ad): void {
+    $ad = trim($ad);
+    if ($ad === '') return;
+    db()->prepare("INSERT IGNORE INTO gider_kategorileri (kullanici_id, ad) VALUES (?, ?)")
+        ->execute([$kullanici_id, $ad]);
+}
+
 // ─── Gelir/Gider Trendi (dönem aralığı, en yeniden en eskiye) ─
 function trend_verisi(int $kullanici_id, string $baslangic, string $bitis): array {
     $db = db();
