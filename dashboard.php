@@ -4,7 +4,7 @@
 // ============================================================
 require_once 'config.php';
 require_once 'includes/functions.php';
-$sayfa_basligi = 'Dashboard';
+$sayfa_basligi = 'Anasayfa';
 
 $kullanici = giris_kontrol();
 $donem     = $_GET['donem'] ?? date('Y-m');

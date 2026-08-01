@@ -10,8 +10,7 @@ $kullanici = giris_kontrol();
 $db  = db();
 $donem = $_GET['donem'] ?? date('Y-m');
 
-$kategoriler = ['Temizlik','Elektrik','Su','Doğalgaz','Asansör',
-                'Bahçe','Güvenlik','Tamirat','Yönetim','Sigorta','Diğer'];
+gider_kategorileri_tablosunu_hazirla();
 
 // ─── FORM İŞLEME ─────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -19,7 +18,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $islem = $_POST['islem'] ?? '';
 
     if ($islem === 'ekle') {
-        $kategori   = in_array($_POST['kategori'], $kategoriler) ? $_POST['kategori'] : 'Diğer';
+        $kategori = mb_substr(trim($_POST['kategori'] ?? ''), 0, 50, 'UTF-8');
+        if ($kategori === '') $kategori = 'Diğer';
         $aciklama   = trim($_POST['aciklama'] ?? '');
         $tutar      = max(0, (float)str_replace(',', '.', $_POST['tutar'] ?? 0));
         $tarih      = $_POST['tarih'] ?: date('Y-m-d');
@@ -29,10 +29,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$aciklama || $tutar <= 0) {
             flash('Açıklama ve tutar zorunludur.', 'hata');
         } else {
-            $db->prepare("INSERT INTO giderler (kullanici_id, kategori, aciklama, tutar, tarih, donem, fatura_no)
-                          VALUES (?,?,?,?,?,?,?)")
-               ->execute([$kullanici['id'], $kategori, $aciklama, $tutar, $tarih, $kayit_donem, $fatura_no]);
-            flash('Gider kaydedildi.');
+            $db->beginTransaction();
+            try {
+                $db->prepare("INSERT INTO giderler (kullanici_id, kategori, aciklama, tutar, tarih, donem, fatura_no)
+                              VALUES (?,?,?,?,?,?,?)")
+                   ->execute([$kullanici['id'], $kategori, $aciklama, $tutar, $tarih, $kayit_donem, $fatura_no]);
+                // Yeni/kullanılan kategoriyi bu kullanıcının öneri listesine kaydet
+                gider_kategori_kaydet($kullanici['id'], $kategori);
+                $db->commit();
+                flash('Gider kaydedildi.');
+            } catch (Exception $ex) {
+                $db->rollBack();
+                flash('Gider kaydedilirken hata oluştu.', 'hata');
+            }
         }
     }
 
@@ -58,6 +67,8 @@ foreach ($giderler as $g) {
     $kat_ozet[$g['kategori']] = ($kat_ozet[$g['kategori']] ?? 0) + $g['tutar'];
 }
 arsort($kat_ozet);
+
+$kategori_onerileri = gider_kategori_onerileri($kullanici['id']);
 
 include 'includes/header.php';
 ?>
@@ -136,11 +147,12 @@ include 'includes/header.php';
       <div class="form-grid">
         <div class="form-group">
           <label>Kategori</label>
-          <select name="kategori" class="input">
-            <?php foreach ($kategoriler as $k): ?>
-            <option><?= e($k) ?></option>
-            <?php endforeach; ?>
-          </select>
+          <div class="combo" id="kategori-combo">
+            <input type="text" id="kategori-input" class="input" autocomplete="off"
+                   placeholder="Yazmaya başlayın...">
+            <input type="hidden" name="kategori" id="kategori-hidden" value="">
+            <div class="combo-dropdown" id="kategori-dropdown" hidden></div>
+          </div>
         </div>
         <div class="form-group">
           <label>Tutar (₺) <span class="req">*</span></label>
@@ -166,5 +178,99 @@ include 'includes/header.php';
     </form>
   </div>
 </div>
+
+<script>
+(function () {
+  var kategoriler = <?= json_encode($kategori_onerileri, JSON_UNESCAPED_UNICODE) ?>;
+  var input    = document.getElementById('kategori-input');
+  var hidden   = document.getElementById('kategori-hidden');
+  var dropdown = document.getElementById('kategori-dropdown');
+  var vurgu    = -1; // klavyeyle seçili satır
+
+  function kapat() {
+    dropdown.hidden = true;
+    dropdown.innerHTML = '';
+    vurgu = -1;
+  }
+
+  function sec(deger) {
+    input.value  = deger;
+    hidden.value = deger;
+    kapat();
+  }
+
+  function satirlariGetir() {
+    return dropdown.querySelectorAll('.combo-item');
+  }
+
+  function vurguGuncelle(satirlar) {
+    satirlar.forEach(function (el, i) {
+      el.classList.toggle('combo-active', i === vurgu);
+    });
+    if (satirlar[vurgu]) satirlar[vurgu].scrollIntoView({ block: 'nearest' });
+  }
+
+  function listeyiCiz() {
+    var q = input.value.trim();
+    var qKucuk = q.toLocaleLowerCase('tr-TR');
+    var eslesenler = q === ''
+      ? kategoriler
+      : kategoriler.filter(function (k) { return k.toLocaleLowerCase('tr-TR').indexOf(qKucuk) !== -1; });
+    var tamEslesme = kategoriler.some(function (k) { return k.toLocaleLowerCase('tr-TR') === qKucuk; });
+
+    dropdown.innerHTML = '';
+    vurgu = -1;
+
+    eslesenler.slice(0, 30).forEach(function (k) {
+      var satir = document.createElement('div');
+      satir.className = 'combo-item';
+      satir.textContent = k;
+      satir.addEventListener('mousedown', function (e) { e.preventDefault(); sec(k); });
+      dropdown.appendChild(satir);
+    });
+
+    if (q !== '' && !tamEslesme) {
+      var ekleSatiri = document.createElement('div');
+      ekleSatiri.className = 'combo-item combo-item-add';
+      ekleSatiri.textContent = '+ “' + q + '” kategorisini ekle';
+      ekleSatiri.addEventListener('mousedown', function (e) { e.preventDefault(); sec(q); });
+      dropdown.appendChild(ekleSatiri);
+    }
+
+    dropdown.hidden = dropdown.children.length === 0;
+  }
+
+  input.addEventListener('focus', listeyiCiz);
+  input.addEventListener('input', function () {
+    hidden.value = input.value.trim();
+    listeyiCiz();
+  });
+  input.addEventListener('blur', function () { setTimeout(kapat, 120); });
+
+  input.addEventListener('keydown', function (e) {
+    var satirlar = satirlariGetir();
+    if (e.key === 'Escape') { kapat(); return; }
+    if (!satirlar.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      vurgu = Math.min(vurgu + 1, satirlar.length - 1);
+      vurguGuncelle(satirlar);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      vurgu = Math.max(vurgu - 1, 0);
+      vurguGuncelle(satirlar);
+    } else if (e.key === 'Enter' && vurgu >= 0) {
+      e.preventDefault();
+      satirlar[vurgu].dispatchEvent(new MouseEvent('mousedown'));
+    }
+  });
+
+  // Kullanıcı hiç öğe seçmeden doğrudan Kaydet'e basarsa, yazdığı metin
+  // aynen kategori olarak gönderilsin.
+  input.closest('form').addEventListener('submit', function () {
+    if (!hidden.value.trim()) hidden.value = input.value.trim();
+  });
+})();
+</script>
 
 <?php include 'includes/footer.php'; ?>
