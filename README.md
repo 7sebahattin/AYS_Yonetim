@@ -73,8 +73,9 @@ Kök adres (`index.php`) herkese açık bir tanıtım sayfasıdır: hero, özell
 Uygulama ana ekrana yüklenip bağımsız bir uygulama gibi açılabilir.
 
 - **`manifest.json`**: uygulama adı, ikonlar (`any` + `maskable` varyantları), `standalone`
-  görünüm ve marka renkleri (`#0d0d1a`). `start_url` `dashboard.php`'dir; oturumsuz
-  kullanıcı normal akışla `login.php`'ye yönlendirilir.
+  görünüm ve marka renkleri (`#0d0d1a`). `start_url` **`/`** (tanıtım sayfası) — oturumu
+  olan/olmayan kullanıcı ayrımı `index.php` tarafından yapılır (bkz. "Oturum Süresi &
+  Beni Hatırla" bölümü); uygulama hiçbir zaman doğrudan `login.php`'de açılmaz.
 - **`sw.js`**: **yalnızca gerçekten statik dosyaları** (`assets/*.css`, ikonlar, manifest)
   cache-first + arka planda güncelleme stratejisiyle önbelleğe alır. Oturuma bağlı veya
   mali veri içeren `.php` sayfaları **kesinlikle önbelleklenmez** — bunlar her zaman
@@ -119,6 +120,7 @@ kategori, o kullanıcının `gider_kategorileri` tablosundaki kişisel listesine
 - Tüm durum değiştiren (POST) istekler CSRF token ile korunur; token karşılaştırması timing-safe `hash_equals()` ile yapılır.
 - Şifreler `password_hash()` (bcrypt) ile saklanır; giriş `password_verify()` ile doğrulanır, başarılı girişte oturum kimliği yenilenir (`session_regenerate_id`).
 - Oturum çerezleri `HttpOnly`, `SameSite=Lax` ve HTTPS altında otomatik olarak `Secure` bayrağıyla ayarlanır.
+- Oturum, 5 dakika hareketsizlikte otomatik sonlanır (`SESSION_SURE`, `config.php`). "Beni Hatırla" işaretlenerek girilen oturumlar bu sınırdan etkilenmez — bkz. aşağıdaki "Beni Hatırla" bölümü.
 - Tüm sayfa yanıtlarına `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` ve temel bir `Content-Security-Policy` (frame-ancestors) header'ı eklenir.
 - Veritabanı bağlantı hataları kullanıcıya detay sızdırmaz; hata sunucu log'una (`error_log`) yazılır, kullanıcıya jenerik bir mesaj gösterilir.
 - Her sorgu oturum sahibinin `kullanici_id` değeriyle filtrelenir; kiracılar (apartmanlar) arası veri sızıntısını önlemek için bu izolasyon tüm modüllerde korunmalıdır.
@@ -127,6 +129,21 @@ kategori, o kullanıcının `gider_kategorileri` tablosundaki kişisel listesine
 - Giriş formunda kaba kuvvet (brute-force) koruması (deneme sınırı, kilitleme, CAPTCHA) bulunmuyor.
 - Şifre sıfırlama (e-posta ile) akışı yok.
 - Minimum şifre uzunluğu 6 karakterdir, karmaşıklık zorunluluğu yoktur.
+
+## Oturum Süresi & "Beni Hatırla"
+
+- **Hareketsizlik zaman aşımı**: `SESSION_SURE` (`config.php`) varsayılan olarak **300 saniye (5 dk)**. Bu süre boyunca istek gelmezse `giris_kontrol()` oturumu sonlandırır ve kullanıcıyı `login.php?mesaj=suresi_doldu`'ya yönlendirir.
+- **"Beni Hatırla"**: Giriş formundaki kutu işaretlenirse `hatirlama_jetonu_baslat()` (`includes/functions.php`) selector/validator deseniyle bir jeton üretir — çerezde (`ays_hatirla`, `HttpOnly`, 30 gün) yalnızca *seçici* açık, *doğrulayıcı* ise sadece SHA-256 hash'i (`hatirlama_jetonlari` tablosunda) saklanır; ham doğrulayıcı hiçbir zaman veritabanına yazılmaz.
+  - Oturum süresi dolduğunda (ya da hiç oturum yokken `/`, `login.php`, veya herhangi bir panel sayfası açıldığında) `oturumu_hatirlama_ile_dene()` bu çerezi doğrular ve geçerliyse **kullanıcıyı sessizce yeniden oturum açar** — şifre tekrar istenmez.
+  - Her başarılı kullanımda jeton **rotasyona sokulur** (eski satır silinir, yeni seçici/doğrulayıcı çifti yazılır, çerez güncellenir) — çerez çalınsa bile tekrar kullanılabilirlik penceresi tek seferle sınırlıdır.
+  - Geçersiz/uyuşmayan bir çerez tespit edilirse ilgili çerez ve (varsa) DB kaydı temizlenir.
+  - `cikis.php` yalnızca **o cihazın** jetonunu siler; diğer cihazlardaki "Beni Hatırla" oturumları etkilenmez.
+  - `hatirlama_jetonlari` tablosu da `gider_kategorileri` gibi ilk kullanımda `CREATE TABLE IF NOT EXISTS` ile kendiliğinden oluşur, ayrı bir migration adımı gerekmez.
+- **PWA açılış davranışı**: `manifest.json`'daki `start_url` **`/`**'dir (tanıtım sayfası). Ana ekrandan açılan uygulama; oturum ya da geçerli "Beni Hatırla" çerezi varsa doğrudan `dashboard.php`'ye geçer, yoksa tanıtım sayfasında açılır — asla doğrudan `login.php`'de açılmaz.
+
+## Arayüz Notları
+
+- **Pencereler (modal'lar)**: Tüm `.modal-overlay` iletişim kutuları (daire/aidat/gider ekle-düzenle, dönem oluştur vb.) hem masaüstünde hem mobilde **ekranda ortalanır** (`align-items:center`, hafif büyüyerek beliren `modalPop` animasyonu). Önceki sürümde tüm ekran boylarında alta yaslanan bir "bottom sheet" tasarımıydı; bu geri bildirim üzerine değiştirildi.
 
 ## Performans Notları
 

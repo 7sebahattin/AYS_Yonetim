@@ -29,6 +29,7 @@ a{color:inherit;text-decoration:none}
 @keyframes pulse{from{opacity:.5;transform:scale(1)}to{opacity:1;transform:scale(1.25)}}
 @keyframes tapPop{0%{transform:scale(1)}40%{transform:scale(.91)}100%{transform:scale(1)}}
 @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes modalPop{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 
 /* ══ AUTH ══════════════════════════════════════════════════ */
 body.auth-body{display:flex;align-items:center;justify-content:center;padding:calc(20px + var(--safe-top)) 16px calc(20px + var(--safe-bottom));background:radial-gradient(ellipse at 20% 20%,rgba(233,69,96,.14) 0%,transparent 55%),radial-gradient(ellipse at 80% 80%,rgba(15,155,142,.09) 0%,transparent 55%),var(--surface)}
@@ -47,6 +48,11 @@ body.auth-body{display:flex;align-items:center;justify-content:center;padding:ca
 .tab-bar{display:flex;border-bottom:1px solid var(--border);margin-bottom:22px}
 .tab-btn{flex:1;padding:10px 8px;text-align:center;color:var(--muted);font-size:14px;font-weight:500;border-bottom:2px solid transparent;transition:all .2s;cursor:pointer}
 .tab-btn:hover{color:var(--text)}.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* auth-form: form-group'lar arasında dikey boşluk (bu olmadan alanlar/buton birbirine yapışıyordu) */
+.auth-form{display:flex;flex-direction:column;gap:16px}
+.checkbox-row{display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13px;color:var(--text2);user-select:none;min-height:24px}
+.checkbox-row input[type="checkbox"]{width:18px;height:18px;flex-shrink:0;accent-color:var(--accent);cursor:pointer}
 
 /* ══ DESKTOP LAYOUT ════════════════════════════════════════ */
 .sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:rgba(20,20,36,.97);backdrop-filter:blur(12px);border-right:1px solid var(--border);padding:22px 13px;display:flex;flex-direction:column;z-index:200}
@@ -281,11 +287,10 @@ textarea.input{resize:vertical;min-height:80px}
 .kat-label{font-size:10px;color:var(--muted);margin-bottom:3px}
 .kat-tutar{font-size:15px;font-weight:700;color:var(--accent)}
 
-/* ══ MODALS — BOTTOM SHEET ══════════════════════════════════ */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:flex-end;justify-content:center;z-index:999;padding:0}
-.modal{background:#1a1a2e;border:1px solid rgba(255,255,255,.12);border-radius:22px 22px 0 0;width:100%;max-width:600px;animation:slideUp .3s cubic-bezier(.22,1,.36,1);max-height:92dvh;overflow-y:auto;padding-bottom:calc(16px + var(--safe-bottom))}
-.modal::before{content:'';display:block;width:36px;height:4px;background:rgba(255,255,255,.18);border-radius:2px;margin:12px auto 0}
-.modal-header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border)}
+/* ══ MODALS — ORTALANMIŞ İLETİŞİM KUTUSU ═══════════════════════ */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px;overflow-y:auto}
+.modal{background:#1a1a2e;border:1px solid rgba(255,255,255,.12);border-radius:20px;width:100%;max-width:600px;margin:auto;animation:modalPop .25s cubic-bezier(.22,1,.36,1);max-height:calc(100dvh - 40px);overflow-y:auto}
+.modal-header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border)}
 .modal-header h3{font-family:'Playfair Display',serif;font-size:17px;color:var(--text)}
 .modal-close{font-size:20px;color:var(--muted);cursor:pointer;background:rgba(255,255,255,.07);border:none;border-radius:8px;padding:5px 11px;transition:all .2s;line-height:1}
 .modal form{padding:18px 20px}
@@ -320,7 +325,8 @@ textarea.input{resize:vertical;min-height:80px}
 
   .trend-amount{display:none}
   .auth-card{padding:28px 20px;border-radius:20px}
-  .modal{border-radius:22px 22px 0 0!important;max-width:100%!important}
+  .modal-overlay{padding:14px}
+  .modal{border-radius:18px}
 
   /* Mobil Header Çarpışma Önleme */
   .mobile-page-title { display: none !important; }

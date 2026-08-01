@@ -11,7 +11,9 @@ define('DB_PASS', 'veritabani_sifresi');
 define('DB_CHARSET', 'utf8mb4');
 
 define('SITE_ADI', 'ApartYönet');
-define('SESSION_SURE', 7200);         // 2 saat (saniye cinsinden)
+define('SESSION_SURE', 300);          // 5 dakika hareketsizlikte oturum sonlanır (saniye cinsinden)
+                                       // "Beni Hatırla" ile giriş yapan kullanıcılar bu sınırdan
+                                       // etkilenmez; oturum jetonuyla sessizce yenilenir.
 
 // ─── PDO Bağlantısı ─────────────────────────────────────────
 function db(): PDO {

@@ -5,8 +5,9 @@
 // ============================================================
 require_once 'includes/functions.php';
 oturum_baslat();
+oturumu_hatirlama_ile_dene();
 
-// Oturumu açık kullanıcıyı doğrudan panele al
+// Oturumu açık (ya da "Beni Hatırla" ile sessizce açılan) kullanıcıyı doğrudan panele al
 if (!empty($_SESSION['kullanici_id'])) {
     header('Location: /dashboard.php');
     exit;
