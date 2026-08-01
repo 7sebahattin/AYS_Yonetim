@@ -31,13 +31,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$kullanici['id']]);
         $tum_daireler_list = $stmt->fetchAll();
 
-        $ins = $db->prepare("INSERT IGNORE INTO aidatlar (kullanici_id, daire_id, donem, tutar, durum) VALUES (?,?,?,?,'bekliyor')");
-        $say = 0;
+        // Tüm (daire × dönem) satırlarını hazırla, tek tek değil toplu (multi-row) INSERT ile yaz
+        $satirlar = [];
         foreach ($tum_daireler_list as $d) {
             foreach ($donemler as $dnem) {
-                $ins->execute([$kullanici['id'], $d['id'], $dnem, $d['aylik_aidat']]);
-                $say += $ins->rowCount();
+                $satirlar[] = [$kullanici['id'], $d['id'], $dnem, $d['aylik_aidat']];
             }
+        }
+
+        $say = 0;
+        $parti_boyutu = 500; // paket boyutu / placeholder sınırı için partiler halinde gönder
+        foreach (array_chunk($satirlar, $parti_boyutu) as $parti) {
+            $yer_tutucular = implode(',', array_fill(0, count($parti), "(?,?,?,?,'bekliyor')"));
+            $degerler = [];
+            foreach ($parti as $satir) {
+                array_push($degerler, ...$satir);
+            }
+            $ins = $db->prepare("INSERT IGNORE INTO aidatlar (kullanici_id, daire_id, donem, tutar, durum) VALUES $yer_tutucular");
+            $ins->execute($degerler);
+            $say += $ins->rowCount();
         }
         $ay_say = count($donemler);
         flash("$say kayıt oluşturuldu ($ay_say dönem × " . count($tum_daireler_list) . " daire).");

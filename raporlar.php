@@ -37,21 +37,7 @@ $gider_listesi = $stmt->fetchAll();
 $stats = istatistikler($kullanici['id'], $donem);
 
 // Filtrelenmiş Trend
-$trend = [];
-$current = $trend_bitis;
-while ($current >= $trend_baslangic) {
-    $s = $db->prepare("SELECT COALESCE(SUM(tutar),0) FROM aidatlar WHERE kullanici_id=? AND donem=? AND durum='odendi'");
-    $s->execute([$kullanici['id'], $current]);
-    $tahsilat = (float)$s->fetchColumn();
-    
-    $g = $db->prepare("SELECT COALESCE(SUM(tutar),0) FROM giderler WHERE kullanici_id=? AND donem=?");
-    $g->execute([$kullanici['id'], $current]);
-    $gider = (float)$g->fetchColumn();
-    
-    $trend[] = ['donem'=>$current, 'ad'=>donem_adi($current), 'tahsilat'=>$tahsilat, 'gider'=>$gider, 'bakiye'=>$tahsilat-$gider];
-    
-    $current = date('Y-m', strtotime($current . '-01 -1 month'));
-}
+$trend = trend_verisi($kullanici['id'], $trend_baslangic, $trend_bitis);
 
 include 'includes/header.php';
 ?>

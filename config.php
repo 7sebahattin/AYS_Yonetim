@@ -26,10 +26,11 @@ function db(): PDO {
         try {
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
+            error_log('DB bağlantı hatası: ' . $e->getMessage());
+            http_response_code(500);
             die('<div style="font-family:sans-serif;padding:40px;color:#c0392b">
                 <h2>Veritabanı Bağlantı Hatası</h2>
-                <p>config.php dosyasındaki DB_HOST, DB_NAME, DB_USER, DB_PASS değerlerini kontrol edin.</p>
-                <code>' . htmlspecialchars($e->getMessage()) . '</code>
+                <p>Sunucu şu anda hizmet veremiyor. Lütfen daha sonra tekrar deneyin ya da yönetici ile iletişime geçin.</p>
             </div>');
         }
     }
