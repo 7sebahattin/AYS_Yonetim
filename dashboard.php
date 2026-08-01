@@ -98,7 +98,7 @@ include 'includes/header.php';
       <div class="dashboard-list-row">
         <div class="dashboard-list-info">
           <span class="daire-badge">#<?= e($b['daire_no']) ?></span>
-          <span class="dashboard-list-name"><?= e($b['sakin_adi'] ?: 'İsimsiz') ?></span>
+          <span class="dashboard-list-name"><?= $b['sakin_adi'] ? e_buyuk($b['sakin_adi']) : 'İSİMSİZ' ?></span>
         </div>
         <div class="dashboard-list-right">
           <span class="dashboard-list-amount"><?= para($b['aylik_aidat']) ?></span>
@@ -122,8 +122,8 @@ include 'includes/header.php';
       <?php foreach ($son_giderler as $g): ?>
       <div class="dashboard-list-row">
         <div class="dashboard-list-info">
-          <span class="badge badge-cat"><?= e($g['kategori']) ?></span>
-          <span class="dashboard-list-name"><?= e(mb_strimwidth($g['aciklama'], 0, 32, '…')) ?></span>
+          <span class="badge badge-cat"><?= e_buyuk($g['kategori']) ?></span>
+          <span class="dashboard-list-name"><?= e(mb_strimwidth(turkce_buyuk($g['aciklama']), 0, 32, '…')) ?></span>
         </div>
         <div class="dashboard-list-right">
           <span class="dashboard-list-amount" style="color:#e94560"><?= para($g['tutar']) ?></span>

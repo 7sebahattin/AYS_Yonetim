@@ -59,8 +59,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $daire_id     = (int)$_POST['daire_id'];
         $tutar        = max(0, (float)str_replace(',', '.', $_POST['tutar'] ?? 0));
         $odeme_tarihi = $_POST['odeme_tarihi'] ?: date('Y-m-d');
-        $dekont_no    = trim($_POST['dekont_no'] ?? '');
-        $notlar       = trim($_POST['notlar'] ?? '');
+        $dekont_no    = buyuk($_POST['dekont_no'] ?? '');
+        $notlar       = buyuk($_POST['notlar'] ?? '');
 
         $stmt = $db->prepare("SELECT id FROM daireler WHERE id=? AND kullanici_id=?");
         $stmt->execute([$daire_id, $kullanici['id']]);
@@ -204,10 +204,10 @@ include 'includes/header.php';
     <?php $durum = $r['durum'] ?? 'bekliyor'; ?>
     <tr>
       <td><strong class="daire-badge">#<?= e($r['daire_no']) ?></strong></td>
-      <td><?= e($r['sakin_adi'] ?: '—') ?></td>
+      <td><?= $r['sakin_adi'] ? e_buyuk($r['sakin_adi']) : '—' ?></td>
       <td><?= para((float)($r['tutar'] ?? $r['aylik_aidat'])) ?></td>
       <td><?= tarih_format($r['odeme_tarihi'] ?? '') ?></td>
-      <td><?= e($r['dekont_no'] ?: '—') ?></td>
+      <td><?= $r['dekont_no'] ? e_buyuk($r['dekont_no']) : '—' ?></td>
       <td>
         <span class="badge badge-<?= $durum === 'odendi' ? 'success' : ($durum === 'gecikme' ? 'danger' : 'warning') ?>">
           <?= $durum === 'odendi' ? '✓ Ödendi' : ($durum === 'gecikme' ? '! Gecikme' : '⏳ Bekliyor') ?>
@@ -256,7 +256,7 @@ $modal_display = $modal_daire ? 'flex' : 'none';
             <?php foreach ($tum_daireler as $d): ?>
             <option value="<?= $d['daire_id'] ?>"
               <?= ($modal_daire && $modal_daire['daire_id'] == $d['daire_id']) ? 'selected' : '' ?>>
-              Daire #<?= e($d['daire_no']) ?><?= $d['sakin_adi'] ? ' — '.e($d['sakin_adi']) : '' ?>
+              Daire #<?= e($d['daire_no']) ?><?= $d['sakin_adi'] ? ' — '.e_buyuk($d['sakin_adi']) : '' ?>
             </option>
             <?php endforeach; ?>
           </select>
@@ -274,13 +274,13 @@ $modal_display = $modal_daire ? 'flex' : 'none';
         </div>
         <div class="form-group">
           <label>Dekont / Makbuz No</label>
-          <input type="text" name="dekont_no" class="input"
+          <input type="text" name="dekont_no" class="input buyuk"
                  value="<?= e($modal_daire['dekont_no'] ?? '') ?>"
                  placeholder="Dekont numarası veya açıklama">
         </div>
         <div class="form-group">
           <label>Not</label>
-          <input type="text" name="notlar" class="input"
+          <input type="text" name="notlar" class="input buyuk"
                  value="<?= e($modal_daire['notlar'] ?? '') ?>"
                  placeholder="Ek not...">
         </div>

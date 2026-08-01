@@ -18,11 +18,6 @@ function closeMorePanel(){
   document.body.style.overflow='';
 }
 
-/* ── Modal: overlay tıkla kapat ────────────────────────── */
-document.querySelectorAll('.modal-overlay').forEach(function(o){
-  o.addEventListener('click',function(e){if(e.target===o)o.style.display='none';});
-});
-
 /* ── Flash: otomatik kapat ─────────────────────────────── */
 document.querySelectorAll('.flash').forEach(function(el){
   setTimeout(function(){
@@ -37,17 +32,6 @@ document.querySelectorAll('[data-confirm]').forEach(function(b){
   b.addEventListener('click',function(e){
     if(!confirm(this.dataset.confirm||'Emin misiniz?'))e.preventDefault();
   });
-});
-
-/* ── Modal swipe-down kapat ────────────────────────────── */
-document.querySelectorAll('.modal').forEach(function(m){
-  var sy=0;
-  m.addEventListener('touchstart',function(e){sy=e.touches[0].clientY;},{passive:true});
-  m.addEventListener('touchend',function(e){
-    if(e.changedTouches[0].clientY-sy>80){
-      var o=m.closest('.modal-overlay');if(o)o.style.display='none';
-    }
-  },{passive:true});
 });
 
 /* ── Prevent accidental form double-submit ─────────────── */

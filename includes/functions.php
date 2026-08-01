@@ -190,6 +190,27 @@ function e(mixed $v): string {
     return htmlspecialchars((string)($v ?? ''), ENT_QUOTES, 'UTF-8');
 }
 
+// ─── Türkçe Büyük Harf ──────────────────────────────────────
+// PHP'nin mb_strtoupper()'ı ve JS'in toUpperCase()'i Türkçe nokta(sız)
+// I kuralını (i→İ, ı→I) bilmez; önce bu iki harfi elle işaretleyip
+// sonra mb_strtoupper çağırıyoruz.
+function turkce_buyuk(string $s): string {
+    $s = str_replace(['i', 'ı'], ['İ', 'I'], $s);
+    return mb_strtoupper($s, 'UTF-8');
+}
+
+// Formdan gelen serbest metin alanlarını kaydetmeden önce normalize eder.
+function buyuk(?string $s): string {
+    return turkce_buyuk(trim((string)$s));
+}
+
+// Görüntülemede kullanılır: htmlspecialchars + Türkçe büyük harf.
+// Bu özellikten önce küçük/karışık harfle kaydedilmiş eski verileri de
+// büyük gösterir; veritabanındaki değeri fiilen değiştirmez.
+function e_buyuk(mixed $v): string {
+    return e(turkce_buyuk((string)($v ?? '')));
+}
+
 // ─── CSRF Token ──────────────────────────────────────────────
 function csrf_token(): string {
     oturum_baslat();
@@ -308,8 +329,8 @@ function gider_kategorileri_tablosunu_hazirla(): void {
 // kullanıcının daha önce eklediği özel kategoriler + geçmişte
 // giderler.kategori'de fiilen kullanılmış değerler (tekilleştirilmiş).
 function gider_kategori_onerileri(int $kullanici_id): array {
-    $varsayilan = ['Temizlik', 'Elektrik', 'Su', 'Doğalgaz', 'Asansör',
-                   'Bahçe', 'Güvenlik', 'Tamirat', 'Yönetim', 'Sigorta', 'Diğer'];
+    $varsayilan = ['TEMİZLİK', 'ELEKTRİK', 'SU', 'DOĞALGAZ', 'ASANSÖR',
+                   'BAHÇE', 'GÜVENLİK', 'TAMİRAT', 'YÖNETİM', 'SİGORTA', 'DİĞER'];
 
     $db = db();
     $ozel = $db->prepare("SELECT ad FROM gider_kategorileri WHERE kullanici_id=? ORDER BY ad");
@@ -320,11 +341,13 @@ function gider_kategori_onerileri(int $kullanici_id): array {
     $gecmis->execute([$kullanici_id]);
     $gecmis = $gecmis->fetchAll(PDO::FETCH_COLUMN);
 
+    // Eski (bu özellikten önce) küçük/karışık harfle kaydedilmiş kategoriler
+    // de büyük harfe çevrilip aynı listede tekilleştirilir.
     $tumu = [];
     foreach (array_merge($varsayilan, $ozel, $gecmis) as $ad) {
-        $anahtar = mb_strtolower(trim($ad), 'UTF-8');
-        if ($anahtar === '' || isset($tumu[$anahtar])) continue;
-        $tumu[$anahtar] = trim($ad);
+        $buyuk_ad = turkce_buyuk(trim((string)$ad));
+        if ($buyuk_ad === '' || isset($tumu[$buyuk_ad])) continue;
+        $tumu[$buyuk_ad] = $buyuk_ad;
     }
     $liste = array_values($tumu);
     natcasesort($liste);

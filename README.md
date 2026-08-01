@@ -110,8 +110,12 @@ kategori, o kullanıcının `gider_kategorileri` tablosundaki kişisel listesine
 - **Kullanıcı izolasyonu**: `gider_kategorileri.kullanici_id` ile her yönetim yalnızca
   kendi eklediği kategorileri görür/önerir; diğer apartmanların kategori listesine erişim
   yoktur (`kullanicilar(id)` üzerine `ON DELETE CASCADE` yabancı anahtarla).
-- Kategori adı boş bırakılırsa sunucu tarafında `Diğer`'e düşer; 50 karaktere kırpılır
+- Kategori seçimi **zorunludur** (hem tarayıcıda `required`, hem sunucu tarafında);
+  boş bırakılırsa kayıt reddedilir, artık sessizce `Diğer`'e düşmez. 50 karaktere kırpılır
   (`giderler.kategori` sütunuyla aynı sınır).
+- Her gider kaydı **düzenlenebilir** ("✎ Düzenle" — `daireler.php`'deki desenle aynı:
+  `?duzenle=<id>` ile açılan, önceki değerlerle dolu bir modal; `guncelle` işlemi `UPDATE`
+  yapar). Hatalı bir girişi düzeltmek için artık silip yeniden eklemeye gerek yok.
 
 ## Güvenlik Notları
 
@@ -144,6 +148,8 @@ kategori, o kullanıcının `gider_kategorileri` tablosundaki kişisel listesine
 ## Arayüz Notları
 
 - **Pencereler (modal'lar)**: Tüm `.modal-overlay` iletişim kutuları (daire/aidat/gider ekle-düzenle, dönem oluştur vb.) hem masaüstünde hem mobilde **ekranda ortalanır** (`align-items:center`, hafif büyüyerek beliren `modalPop` animasyonu). Önceki sürümde tüm ekran boylarında alta yaslanan bir "bottom sheet" tasarımıydı; bu geri bildirim üzerine değiştirildi.
+- **Pencereler yalnızca kapatma butonuyla kapanır**: Overlay'in boş alanına tıklama ve mobilde aşağı kaydırma (swipe) ile kapatma kaldırıldı — kazara dokunuşla doldurulmuş bir formun kaybolması engellendi. Kapatmak için `×`, "İptal" ya da başarılı kayıt sonrası otomatik kapanma kullanılır.
+- **Otomatik büyük harf** (`buyuk`/`e_buyuk`, `includes/functions.php`): Sakin adı, notlar, gider kategorisi/açıklaması, fatura/dekont no, apartman adı ve adres gibi serbest metin alanları kaydedilirken Türkçe kurallara uygun şekilde (i→İ, ı→I) büyük harfe çevrilir (`turkce_buyuk()` — PHP'nin `mb_strtoupper()`'ı bu ayrımı tek başına yapmaz). İlgili `<input>`/`<textarea>` alanları `class="input buyuk"` ile yazarken de görsel olarak büyük gösterilir. Bu özellikten **önce** küçük/karışık harfle kaydedilmiş veriler de görüntülenirken (`e_buyuk()`) büyük gösterilir — veritabanındaki değer fiilen değiştirilmez, yalnızca ekranda/çıktıda büyük görünür; bir sonraki düzenlemede kaydedilirse kalıcı olarak büyük harfe döner. E-posta, kullanıcı adı ve şifre alanları bu dönüşümün dışındadır.
 
 ## Performans Notları
 

@@ -32,7 +32,7 @@ $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0d0d1a">
   <meta name="apple-mobile-web-app-title" content="AYS">
-  <title><?= e($sayfa_basligi ?? 'Panel') ?> — <?= e($kullanici['apartman_adi']) ?></title>
+  <title><?= e($sayfa_basligi ?? 'Panel') ?> — <?= e_buyuk($kullanici['apartman_adi']) ?></title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/assets/icons/favicon-32.png" sizes="32x32">
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
@@ -48,7 +48,7 @@ $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
   <a href="/dashboard.php" class="sidebar-brand" aria-label="Panele git">
     <div class="brand-icon">🏢</div>
     <div>
-      <div class="brand-name"><?= e($kullanici['apartman_adi']) ?></div>
+      <div class="brand-name"><?= e_buyuk($kullanici['apartman_adi']) ?></div>
       <div class="brand-user"><?= e($kullanici['kullanici_adi']) ?></div>
     </div>
   </a>
@@ -74,7 +74,7 @@ $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
   <a href="/dashboard.php" class="mobile-topbar-brand" aria-label="Panele git">
     <div class="mobile-brand-icon">🏢</div>
     <div>
-      <div class="mobile-brand-text"><?= e($kullanici['apartman_adi']) ?></div>
+      <div class="mobile-brand-text"><?= e_buyuk($kullanici['apartman_adi']) ?></div>
       <div class="mobile-brand-sub"><?= e($kullanici['kullanici_adi']) ?></div>
     </div>
   </a>

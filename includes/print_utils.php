@@ -28,6 +28,7 @@ HTML;
 function print_page_header(array $kullanici, string $baslik, string $donem = null, array $stats = null): string {
     $tarih_str = $donem ? donem_adi($donem) : tarih_format(date('Y-m-d'));
     $yazdirma_tarihi = date('d.m.Y H:i');
+    $apartman_adi_html = e_buyuk($kullanici['apartman_adi']);
     
     // Eğer istatistik (stats) gönderildiyse, başlığın sağına ufak kartlar halinde ekle
     $stats_html = '';
@@ -54,7 +55,7 @@ function print_page_header(array $kullanici, string $baslik, string $donem = nul
     <div style="display:flex; align-items:center; gap:10px;">
         <div style="width:36px; height:36px; background:linear-gradient(135deg, #e94560, #c73652); color:white; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:18px;">🏢</div>
         <div>
-            <div style="font-size:14pt; font-weight:700; color:#1a1a2e; line-height:1.1; margin-bottom:3px;">{$kullanici['apartman_adi']}</div>
+            <div style="font-size:14pt; font-weight:700; color:#1a1a2e; line-height:1.1; margin-bottom:3px;">{$apartman_adi_html}</div>
             <div style="font-size:8pt; color:#666;">Dönem: {$tarih_str} &nbsp;|&nbsp; Yazdırma: {$yazdirma_tarihi} &nbsp;|&nbsp; {$baslik}</div>
         </div>
     </div>
@@ -154,8 +155,8 @@ function print_aidat_table(array $daireler): string {
                 <td class="text-right"><strong>%s</strong></td>
             </tr>',
             e($d['daire_no']),
-            e($d['sakin_adi'] ?: '—'),
-            e($d['dekont_no'] ?: '—'),
+            $d['sakin_adi'] ? e_buyuk($d['sakin_adi']) : '—',
+            $d['dekont_no'] ? e_buyuk($d['dekont_no']) : '—',
             tarih_format($d['odeme_tarihi'] ?? ''),
             $durum_class,
             $durum_text,
@@ -220,11 +221,11 @@ function print_gider_table(array $giderler, float $toplam): string {
                 <td class="text-center">%s</td>
                 <td class="text-center">%s</td>
             </tr>',
-            e($g['kategori']),
-            e($g['aciklama']),
+            e_buyuk($g['kategori']),
+            e_buyuk($g['aciklama']),
             para((float)$g['tutar']),
             tarih_format($g['tarih']),
-            e($g['fatura_no'] ?: '—')
+            $g['fatura_no'] ? e_buyuk($g['fatura_no']) : '—'
         );
     }
     

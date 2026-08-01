@@ -33,8 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $tutar_tipi   = $_POST['tutar_tipi'] ?? 'standart'; // standart | sabit | farkli
         $sabit_tutar  = max(0, (float)str_replace(',', '.', $_POST['sabit_tutar'] ?? 0));
         $odeme_tarihi = $_POST['odeme_tarihi'] ?: date('Y-m-d');
-        $dekont_no    = trim($_POST['dekont_no'] ?? '');
-        $notlar       = trim($_POST['notlar'] ?? '');
+        $dekont_no    = buyuk($_POST['dekont_no'] ?? '');
+        $notlar       = buyuk($_POST['notlar'] ?? '');
 
         if ($baslangic && $bitis && $baslangic <= $bitis) {
             // Dönem aralığını oluştur
@@ -122,7 +122,7 @@ include 'includes/header.php';
         <h2 style="font-family:'Playfair Display',serif;font-size:22px;color:var(--text)">
             Daire #<?= e($daire['daire_no']) ?>
             <?php if ($daire['sakin_adi']): ?>
-            <span style="color:var(--muted);font-size:16px;font-family:'DM Sans',sans-serif;font-weight:400"> — <?= e($daire['sakin_adi']) ?></span>
+            <span style="color:var(--muted);font-size:16px;font-family:'DM Sans',sans-serif;font-weight:400"> — <?= e_buyuk($daire['sakin_adi']) ?></span>
             <?php endif; ?>
         </h2>
         <?php if ($daire['telefon']): ?>
@@ -169,10 +169,11 @@ include 'includes/header.php';
             $durum_listesi .= "\n✓ " . donem_adi($a['donem']) . " — " . para((float)$a['tutar']);
         }
     }
-    $wa_text = "Merhaba " . ($daire['sakin_adi'] ?: 'Sayın Daire Sakini') . ",\n\n"
-        . $kullanici['apartman_adi'] . " — Daire #" . $daire['daire_no'] . " Aidat Durumu:"
+    $apartman_adi_buyuk = turkce_buyuk($kullanici['apartman_adi']);
+    $wa_text = "Merhaba " . ($daire['sakin_adi'] ? turkce_buyuk($daire['sakin_adi']) : 'Sayın Daire Sakini') . ",\n\n"
+        . $apartman_adi_buyuk . " — Daire #" . $daire['daire_no'] . " Aidat Durumu:"
         . $durum_listesi
-        . "\n\nBilginize sunarız.\n" . $kullanici['apartman_adi'] . " Yönetimi";
+        . "\n\nBilginize sunarız.\n" . $apartman_adi_buyuk . " Yönetimi";
     $wa_url = "https://wa.me/" . preg_replace('/[^0-9]/', '', $daire['telefon'] ?? '')
         . "?text=" . rawurlencode($wa_text);
     ?>
@@ -228,8 +229,8 @@ include 'includes/header.php';
                     </span>
                 </td>
                 <td><?= tarih_format($a['odeme_tarihi'] ?? '') ?></td>
-                <td><?= e($a['dekont_no'] ?: '—') ?></td>
-                <td style="font-size:12px;color:var(--muted)"><?= e($a['notlar'] ?: '—') ?></td>
+                <td><?= $a['dekont_no'] ? e_buyuk($a['dekont_no']) : '—' ?></td>
+                <td style="font-size:12px;color:var(--muted)"><?= $a['notlar'] ? e_buyuk($a['notlar']) : '—' ?></td>
                 <td>
                     <form method="post" style="display:inline">
                         <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
@@ -336,11 +337,11 @@ include 'includes/header.php';
                 </div>
                 <div class="form-group">
                     <label>Dekont / Makbuz No</label>
-                    <input type="text" name="dekont_no" class="input" placeholder="Dekont numarası...">
+                    <input type="text" name="dekont_no" class="input buyuk" placeholder="Dekont numarası...">
                 </div>
                 <div class="form-group full-width">
                     <label>Not</label>
-                    <input type="text" name="notlar" class="input" placeholder="Toplu ödeme, peşin vb...">
+                    <input type="text" name="notlar" class="input buyuk" placeholder="Toplu ödeme, peşin vb...">
                 </div>
             </div>
 

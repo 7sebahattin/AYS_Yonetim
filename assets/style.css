@@ -176,6 +176,11 @@ body.auth-body{display:flex;align-items:center;justify-content:center;padding:ca
 .input:focus{border-color:var(--accent);background:rgba(233,69,96,.07)}
 .input:disabled{opacity:.45;cursor:not-allowed}
 .input-sm{padding:8px 12px;font-size:13px;border-radius:7px}
+/* Serbest metin alanlarını yazarken görsel olarak büyük harf gösterir;
+   gerçek değer sunucuya gönderilirken buyuk() ile Türkçe kurallara göre
+   büyütülür (bkz. includes/functions.php). Placeholder etkilenmez. */
+.buyuk{text-transform:uppercase}
+.buyuk::placeholder{text-transform:none}
 select.input option{background:#1a1a2e;color:var(--text)}
 textarea.input{resize:vertical;min-height:80px}
 .form-group{display:flex;flex-direction:column;gap:7px}

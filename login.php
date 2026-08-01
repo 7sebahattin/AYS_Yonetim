@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $kullanici_adi  = trim($_POST['kullanici_adi'] ?? '');
         $sifre          = $_POST['sifre'] ?? '';
         $sifre2         = $_POST['sifre2'] ?? '';
-        $apartman_adi   = trim($_POST['apartman_adi'] ?? '');
+        $apartman_adi   = buyuk($_POST['apartman_adi'] ?? '');
         $toplam_daire   = max(1, min(200, (int)($_POST['toplam_daire'] ?? 10)));
 
         if (!$kullanici_adi || !$sifre || !$apartman_adi) {
@@ -195,7 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
     <div class="form-group">
       <label>Apartman Adı <span class="req">*</span></label>
-      <input type="text" name="apartman_adi" class="input" placeholder="örn: Gül Apartmanı"
+      <input type="text" name="apartman_adi" class="input buyuk" placeholder="örn: Gül Apartmanı"
              value="<?= e($_POST['apartman_adi'] ?? '') ?>" required>
     </div>
     <div class="form-group">
