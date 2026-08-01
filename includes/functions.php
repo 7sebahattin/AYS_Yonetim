@@ -5,11 +5,24 @@
 
 require_once __DIR__ . '/../config.php';
 
+// ─── Güvenlik Header'ları ───────────────────────────────────
+function guvenlik_headerlari(): void {
+    if (headers_sent()) return;
+    header('X-Frame-Options: SAMEORIGIN');
+    header('X-Content-Type-Options: nosniff');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header("Content-Security-Policy: frame-ancestors 'self'");
+}
+
 // ─── Oturum Başlat ──────────────────────────────────────────
 function oturum_baslat(): void {
+    guvenlik_headerlari();
     if (session_status() === PHP_SESSION_NONE) {
+        $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
         ini_set('session.cookie_httponly', 1);
         ini_set('session.cookie_samesite', 'Lax');
+        ini_set('session.cookie_secure', $https ? 1 : 0);
         session_start();
     }
 }
@@ -72,7 +85,8 @@ function csrf_token(): string {
 }
 
 function csrf_kontrol(): void {
-    if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+    $beklenen = $_SESSION['csrf_token'] ?? '';
+    if (empty($_POST['csrf_token']) || empty($beklenen) || !hash_equals($beklenen, $_POST['csrf_token'])) {
         http_response_code(403);
         die('Güvenlik hatası. Lütfen sayfayı yenileyin.');
     }
@@ -154,4 +168,45 @@ function istatistikler(int $kullanici_id, string $donem): array {
             ? round(((int)($aidat['odenen_daire'] ?? 0) / $toplam_daire) * 100)
             : 0,
     ];
+}
+
+// ─── Gelir/Gider Trendi (dönem aralığı, en yeniden en eskiye) ─
+function trend_verisi(int $kullanici_id, string $baslangic, string $bitis): array {
+    $db = db();
+
+    // Dönem başına tahsilat toplamı — tek GROUP BY sorgusu
+    $stmt = $db->prepare("
+        SELECT donem, SUM(tutar) AS toplam
+        FROM aidatlar
+        WHERE kullanici_id = ? AND durum = 'odendi' AND donem BETWEEN ? AND ?
+        GROUP BY donem
+    ");
+    $stmt->execute([$kullanici_id, $baslangic, $bitis]);
+    $tahsilatlar = array_column($stmt->fetchAll(), 'toplam', 'donem');
+
+    // Dönem başına gider toplamı — tek GROUP BY sorgusu
+    $stmt = $db->prepare("
+        SELECT donem, SUM(tutar) AS toplam
+        FROM giderler
+        WHERE kullanici_id = ? AND donem BETWEEN ? AND ?
+        GROUP BY donem
+    ");
+    $stmt->execute([$kullanici_id, $baslangic, $bitis]);
+    $giderler = array_column($stmt->fetchAll(), 'toplam', 'donem');
+
+    $trend = [];
+    $current = $bitis;
+    while ($current >= $baslangic) {
+        $tahsilat = (float)($tahsilatlar[$current] ?? 0);
+        $gider    = (float)($giderler[$current] ?? 0);
+        $trend[] = [
+            'donem'    => $current,
+            'ad'       => donem_adi($current),
+            'tahsilat' => $tahsilat,
+            'gider'    => $gider,
+            'bakiye'   => $tahsilat - $gider,
+        ];
+        $current = date('Y-m', strtotime($current . '-01 -1 month'));
+    }
+    return $trend;
 }

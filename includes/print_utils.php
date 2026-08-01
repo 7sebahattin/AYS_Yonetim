@@ -228,6 +228,8 @@ function print_gider_table(array $giderler, float $toplam): string {
         );
     }
     
+    $toplam_str = para($toplam);
+
     return <<<HTML
 <table class="print-table">
     <thead>
@@ -245,7 +247,7 @@ function print_gider_table(array $giderler, float $toplam): string {
     <tfoot>
         <tr class="total-row">
             <td colspan="2"><strong>TOPLAM GİDER</strong></td>
-            <td class="text-right" colspan="3"><strong class="text-danger">{para($toplam)}</strong></td>
+            <td class="text-right" colspan="3"><strong class="text-danger">{$toplam_str}</strong></td>
         </tr>
     </tfoot>
 </table>
