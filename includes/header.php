@@ -40,13 +40,13 @@ $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
 
 <!-- ══ DESKTOP SIDEBAR ══════════════════════════════════════ -->
 <aside class="sidebar">
-  <div class="sidebar-brand">
+  <a href="/dashboard.php" class="sidebar-brand" aria-label="Panele git">
     <div class="brand-icon">🏢</div>
     <div>
       <div class="brand-name"><?= e($kullanici['apartman_adi']) ?></div>
       <div class="brand-user"><?= e($kullanici['kullanici_adi']) ?></div>
     </div>
-  </div>
+  </a>
   <nav class="sidebar-nav">
     <?php foreach (array_merge($menu, [['dosya'=>'raporlar.php','etiket'=>'Raporlar','ikon'=>'📊']]) as $m): ?>
     <a href="/<?= $m['dosya'] ?>" class="nav-item <?= $aktif_sayfa === $m['dosya'] ? 'active' : '' ?>">
@@ -66,13 +66,13 @@ $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
 
 <!-- ══ MOBİL TOPBAR ════════════════════════════════════════ -->
 <header class="mobile-topbar">
-  <div class="mobile-topbar-brand">
+  <a href="/dashboard.php" class="mobile-topbar-brand" aria-label="Panele git">
     <div class="mobile-brand-icon">🏢</div>
     <div>
       <div class="mobile-brand-text"><?= e($kullanici['apartman_adi']) ?></div>
       <div class="mobile-brand-sub"><?= e($kullanici['kullanici_adi']) ?></div>
     </div>
-  </div>
+  </a>
   <span class="mobile-page-title"><?= e($sayfa_basligi ?? '') ?></span>
   <form method="get" style="display:flex; align-items:center; gap:6px;">
     <label style="font-size:11px; font-weight:700; color:var(--accent);">Dönem Seç:</label>

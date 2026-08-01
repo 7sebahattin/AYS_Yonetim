@@ -1,0 +1,212 @@
+/* ============================================================
+   landing.css — Tanıtım (index.php) sayfası stilleri
+   style.css'teki renk değişkenlerini (--accent, --surface ...)
+   yeniden kullanır. Mobile-first, responsive.
+   ============================================================ */
+
+.lp-body {
+  background:
+    radial-gradient(ellipse at 15% -10%, rgba(233, 69, 96, .16) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 10%, rgba(15, 155, 142, .10) 0%, transparent 50%),
+    var(--surface);
+  color: var(--text);
+}
+
+.lp-container { width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+.lp-narrow    { max-width: 780px; }
+
+/* Klavye kullanıcıları için içeriğe atlama bağlantısı */
+.lp-skip {
+  position: absolute; left: -9999px; top: 0; z-index: 999;
+  background: var(--accent); color: #fff; padding: 10px 16px; border-radius: 0 0 8px 0;
+}
+.lp-skip:focus { left: 0; }
+
+/* ── Butonlar ─────────────────────────────────────────────── */
+.lp-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; padding: 11px 20px; border-radius: 10px;
+  font-size: 14px; font-weight: 600; line-height: 1;
+  border: 1px solid transparent; cursor: pointer;
+  transition: transform .18s, box-shadow .18s, background .18s, border-color .18s;
+  white-space: nowrap;
+}
+.lp-btn-lg      { padding: 15px 28px; font-size: 15.5px; border-radius: 12px; }
+.lp-btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; box-shadow: 0 8px 22px var(--glow); }
+.lp-btn-primary:hover  { transform: translateY(-2px); box-shadow: 0 12px 30px var(--glow); }
+.lp-btn-outline { border-color: var(--border2); color: var(--text); background: rgba(255, 255, 255, .04); }
+.lp-btn-outline:hover  { border-color: var(--accent); color: var(--accent); }
+.lp-btn-ghost   { color: var(--text2); }
+.lp-btn-ghost:hover    { color: var(--text); background: rgba(255, 255, 255, .06); }
+
+/* ── Üst bar ──────────────────────────────────────────────── */
+.lp-nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(13, 13, 26, .82);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+.lp-nav-inner { display: flex; align-items: center; gap: 16px; min-height: 64px; }
+.lp-brand { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
+.lp-brand-icon {
+  width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  box-shadow: 0 4px 14px var(--glow);
+}
+.lp-brand-text {
+  font-family: 'Playfair Display', serif; font-size: 21px; font-weight: 900;
+  letter-spacing: .5px; color: var(--text);
+}
+.lp-nav-links { display: none; gap: 26px; margin-left: auto; }
+.lp-nav-links a { color: var(--text2); font-size: 14px; font-weight: 500; transition: color .18s; }
+.lp-nav-links a:hover { color: var(--accent); }
+.lp-nav-cta { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+
+/* ── Hero ─────────────────────────────────────────────────── */
+.lp-hero { position: relative; overflow: hidden; padding: 64px 0 72px; }
+.lp-hero-bg { position: absolute; inset: 0; pointer-events: none; }
+.lp-orb { position: absolute; border-radius: 50%; filter: blur(70px); }
+.lp-orb-1 { width: 340px; height: 340px; background: rgba(233, 69, 96, .18); top: -80px; left: -60px; }
+.lp-orb-2 { width: 300px; height: 300px; background: rgba(15, 155, 142, .13); top: 40px; right: -80px; }
+.lp-orb-3 { width: 260px; height: 260px; background: rgba(245, 166, 35, .08); bottom: -120px; left: 45%; }
+.lp-hero-inner { position: relative; z-index: 1; text-align: center; }
+
+.lp-badge {
+  display: inline-block; padding: 6px 14px; border-radius: 999px;
+  background: rgba(233, 69, 96, .12); border: 1px solid rgba(233, 69, 96, .28);
+  color: var(--accent); font-size: 12.5px; font-weight: 600; margin-bottom: 20px;
+}
+.lp-hero-title {
+  font-family: 'Playfair Display', serif; font-weight: 900;
+  font-size: clamp(32px, 8vw, 60px); line-height: 1.1; color: var(--text);
+  margin-bottom: 18px;
+}
+.lp-grad {
+  background: linear-gradient(135deg, var(--accent), var(--gold));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+.lp-hero-sub {
+  max-width: 620px; margin: 0 auto 30px;
+  font-size: clamp(14.5px, 2.2vw, 17px); line-height: 1.7; color: var(--text2);
+}
+.lp-hero-cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.lp-hero-points {
+  list-style: none; display: flex; flex-wrap: wrap; gap: 8px 22px;
+  justify-content: center; margin-top: 26px;
+  font-size: 13px; color: var(--muted);
+}
+
+/* ── Bölümler ─────────────────────────────────────────────── */
+.lp-section { padding: 64px 0; }
+.lp-section-alt { background: rgba(255, 255, 255, .02); border-block: 1px solid var(--border); }
+.lp-section-head { text-align: center; max-width: 680px; margin: 0 auto 40px; }
+.lp-eyebrow {
+  text-transform: uppercase; letter-spacing: 1.4px;
+  font-size: 11.5px; font-weight: 700; color: var(--accent); margin-bottom: 10px;
+}
+.lp-section-title {
+  font-family: 'Playfair Display', serif; font-weight: 700;
+  font-size: clamp(24px, 5vw, 36px); line-height: 1.2; color: var(--text);
+}
+.lp-section-sub { margin-top: 12px; font-size: 15px; line-height: 1.65; color: var(--text2); }
+
+.lp-grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+
+/* ── Özellik kartları ─────────────────────────────────────── */
+.lp-card {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 24px 22px;
+  transition: transform .2s, border-color .2s, background .2s;
+}
+.lp-card:hover { transform: translateY(-4px); border-color: rgba(233, 69, 96, .35); background: rgba(255, 255, 255, .06); }
+.lp-card-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 46px; height: 46px; border-radius: 12px; font-size: 22px; margin-bottom: 14px;
+  background: rgba(233, 69, 96, .12); border: 1px solid rgba(233, 69, 96, .22);
+}
+.lp-card-title { font-size: 16.5px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.lp-card-text  { font-size: 14px; line-height: 1.65; color: var(--text2); }
+
+/* ── Avantajlar ───────────────────────────────────────────── */
+.lp-benefit { display: flex; gap: 15px; align-items: flex-start; padding: 4px 0; }
+.lp-benefit-icon {
+  flex-shrink: 0; width: 42px; height: 42px; border-radius: 11px; font-size: 20px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(15, 155, 142, .12); border: 1px solid rgba(15, 155, 142, .25);
+}
+.lp-benefit-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+
+/* ── CTA şeridi ───────────────────────────────────────────── */
+.lp-cta-band {
+  margin-top: 46px; padding: 30px 26px; border-radius: 18px;
+  background: linear-gradient(135deg, rgba(233, 69, 96, .14), rgba(15, 155, 142, .10));
+  border: 1px solid rgba(233, 69, 96, .26);
+  display: flex; flex-direction: column; gap: 18px; align-items: center; text-align: center;
+}
+.lp-cta-title { font-family: 'Playfair Display', serif; font-size: clamp(20px, 4vw, 27px); font-weight: 700; color: var(--text); }
+.lp-cta-text  { margin-top: 7px; font-size: 14.5px; color: var(--text2); }
+
+/* ── SSS (accordion) ──────────────────────────────────────── */
+.lp-faq { display: flex; flex-direction: column; gap: 10px; }
+.lp-faq-item {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 12px; overflow: hidden; transition: border-color .2s;
+}
+.lp-faq-item[open] { border-color: rgba(233, 69, 96, .35); }
+.lp-faq-q {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 17px 20px; cursor: pointer; list-style: none;
+  font-size: 15px; font-weight: 600; color: var(--text);
+}
+.lp-faq-q::-webkit-details-marker { display: none; }
+.lp-faq-q:hover { color: var(--accent); }
+.lp-faq-mark { position: relative; width: 14px; height: 14px; flex-shrink: 0; }
+.lp-faq-mark::before,
+.lp-faq-mark::after {
+  content: ''; position: absolute; inset: 0; margin: auto;
+  background: var(--accent); border-radius: 2px; transition: transform .22s;
+}
+.lp-faq-mark::before { width: 14px; height: 2px; }
+.lp-faq-mark::after  { width: 2px; height: 14px; }
+.lp-faq-item[open] .lp-faq-mark::after { transform: rotate(90deg); opacity: 0; }
+.lp-faq-a { padding: 0 20px 18px; }
+.lp-faq-a p { font-size: 14px; line-height: 1.72; color: var(--text2); }
+
+/* ── Footer ───────────────────────────────────────────────── */
+.lp-footer { border-top: 1px solid var(--border); background: rgba(0, 0, 0, .22); padding-top: 44px; }
+.lp-footer-inner { display: grid; grid-template-columns: 1fr; gap: 30px; padding-bottom: 34px; }
+.lp-footer-brand .lp-brand { margin-bottom: 12px; }
+.lp-footer-desc { font-size: 13.5px; line-height: 1.65; color: var(--muted); max-width: 320px; }
+.lp-footer-col h3 {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text); margin-bottom: 13px;
+}
+.lp-footer-col a { display: block; font-size: 13.5px; color: var(--muted); padding: 5px 0; transition: color .18s; }
+.lp-footer-col a:hover { color: var(--accent); }
+.lp-footer-bottom {
+  border-top: 1px solid var(--border); padding-block: 18px;
+  font-size: 12.5px; color: var(--muted); text-align: center;
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (min-width: 640px) {
+  .lp-grid-2 { grid-template-columns: repeat(2, 1fr); gap: 22px 26px; }
+  .lp-cta-band { flex-direction: row; justify-content: space-between; text-align: left; padding: 34px 34px; }
+  .lp-footer-inner { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 900px) {
+  .lp-hero { padding: 92px 0 100px; }
+  .lp-section { padding: 84px 0; }
+  .lp-nav-links { display: flex; }
+  .lp-nav-cta { margin-left: 26px; }
+  .lp-grid-3 { grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .lp-footer-inner { grid-template-columns: 1.6fr 1fr 1fr 1.2fr; gap: 34px; }
+}
+
+/* Hareket azaltma tercihi */
+@media (prefers-reduced-motion: reduce) {
+  .lp-btn, .lp-card, .lp-faq-mark::before, .lp-faq-mark::after { transition: none; }
+  .lp-btn-primary:hover, .lp-card:hover { transform: none; }
+}

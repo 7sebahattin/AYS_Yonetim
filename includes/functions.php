@@ -31,13 +31,13 @@ function oturum_baslat(): void {
 function giris_kontrol(): array {
     oturum_baslat();
     if (empty($_SESSION['kullanici_id'])) {
-        header('Location: /index.php');
+        header('Location: /login.php');
         exit;
     }
     // Oturum süresi kontrolü
     if (!empty($_SESSION['son_islem']) && (time() - $_SESSION['son_islem']) > SESSION_SURE) {
         session_destroy();
-        header('Location: /index.php?mesaj=suresi_doldu');
+        header('Location: /login.php?mesaj=suresi_doldu');
         exit;
     }
     $_SESSION['son_islem'] = time();

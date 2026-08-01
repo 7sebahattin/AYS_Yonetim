@@ -1,200 +1,318 @@
 <?php
 // ============================================================
-//  index.php — GİRİŞ / KAYIT SAYFASI
+//  index.php — TANITIM (LANDING) SAYFASI
+//  Herkese açık; giriş/kayıt için login.php'ye yönlendirir.
 // ============================================================
-require_once 'config.php';
 require_once 'includes/functions.php';
 oturum_baslat();
 
-// Zaten giriş yapmışsa dashboard'a yönlendir
+// Oturumu açık kullanıcıyı doğrudan panele al
 if (!empty($_SESSION['kullanici_id'])) {
     header('Location: /dashboard.php');
     exit;
 }
 
-$hata   = '';
-$basari = '';
-$mod    = $_GET['mod'] ?? 'giris'; // 'giris' | 'kayit'
+// Canonical/Open Graph için mutlak adres. Alan adı değişirse burayı güncelleyin;
+// HTTP_HOST kullanılmıyor çünkü host header'ı istemci tarafından değiştirilebilir.
+$site_url    = 'https://ays.derspros.com.tr';
+$site_adi    = 'AYS — Apartman Yönetim Sistemi';
+$sayfa_basi  = 'Apartman Yönetim Yazılımı | Site Aidat Takip Sistemi — AYS';
+$aciklama    = 'AYS ile apartman ve site yönetimi tek panelde: otomatik aidat takibi, '
+             . 'WhatsApp ile borç bildirimi, gelir-gider raporları ve tek tıkla A4 rapor '
+             . 'yazdırma. Kurulum gerektirmez, mobil uyumludur, ücretsiz başlayın.';
 
-// ─── Dönem süresi doldu mesajı ───────────────────────────────
-if (isset($_GET['mesaj']) && $_GET['mesaj'] === 'suresi_doldu') {
-    $hata = 'Oturum süreniz doldu. Lütfen tekrar giriş yapın.';
-}
+// SSS — hem sayfada hem de FAQPage yapısal verisinde kullanılır (tek kaynak)
+$sss = [
+    [
+        's' => 'AYS apartman yönetim yazılımı nedir?',
+        'c' => 'AYS, apartman ve site yöneticilerinin aidat tahsilatını, giderleri ve '
+             . 'daire bilgilerini tek bir panelden takip etmesini sağlayan web tabanlı bir '
+             . 'yönetim yazılımıdır. Tarayıcı üzerinden çalışır, bilgisayara program '
+             . 'kurmanız gerekmez.',
+    ],
+    [
+        's' => 'Site aidat takip sistemi nasıl çalışır?',
+        'c' => 'Dairelerinizi ve aylık aidat tutarlarını bir kez tanımlarsınız. Ardından '
+             . 'istediğiniz dönem aralığı için aidat kayıtları toplu şekilde oluşturulur. '
+             . 'Ödeme geldikçe tek tıkla "ödendi" işaretler, tahsilat oranını anlık '
+             . 'görürsünüz.',
+    ],
+    [
+        's' => 'Aidat borcu olan daire sakinlerine bildirim gönderebilir miyim?',
+        'c' => 'Evet. Daire detay sayfasındaki WhatsApp butonu, o daireye ait ödenmemiş '
+             . 'dönemleri ve son ödemeleri içeren hazır bir mesaj oluşturur. Mesajı '
+             . 'göndermeden önce düzenleyebilirsiniz.',
+    ],
+    [
+        's' => 'Aidat ve gider raporlarını yazdırabilir miyim?',
+        'c' => 'Evet. Aidat detayı, gider detayı, gelir-gider trendi ve daire bazlı '
+             . 'geçmiş için A4 sayfaya optimize edilmiş, imza alanı içeren raporlar tek '
+             . 'tıkla yazdırılabilir.',
+    ],
+    [
+        's' => 'Verilerim güvende mi?',
+        'c' => 'Her yönetimin verisi kendi hesabıyla izole edilir; başka bir apartmanın '
+             . 'kayıtlarına erişilemez. Şifreler geri döndürülemez şekilde şifrelenerek '
+             . 'saklanır, tüm formlar CSRF korumalıdır ve bağlantı HTTPS üzerinden '
+             . 'yapılır.',
+    ],
+    [
+        's' => 'Kullanmak için ücret ödemem gerekiyor mu?',
+        'c' => 'Hesap oluşturmak ve apartmanınızı kurmak ücretsizdir. Kayıt olduktan '
+             . 'sonra daire sayınızı belirler ve sistemi hemen kullanmaya başlarsınız.',
+    ],
+];
 
-// ─── FORM İŞLEME ─────────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    csrf_kontrol();
-    $islem = $_POST['islem'] ?? '';
+// ── Yapısal veri (JSON-LD): yazılım künyesi + SSS ────────────
+$jsonld = [
+    '@context' => 'https://schema.org',
+    '@graph'   => [
+        [
+            '@type'               => 'SoftwareApplication',
+            'name'                => 'AYS — Apartman Yönetim Sistemi',
+            'applicationCategory' => 'BusinessApplication',
+            'operatingSystem'     => 'Web',
+            'url'                 => $site_url . '/',
+            'description'         => $aciklama,
+            'inLanguage'          => 'tr-TR',
+            'offers'              => [
+                '@type'         => 'Offer',
+                'price'         => '0',
+                'priceCurrency' => 'TRY',
+            ],
+        ],
+        [
+            '@type'      => 'FAQPage',
+            'mainEntity' => array_map(fn($x) => [
+                '@type'          => 'Question',
+                'name'           => $x['s'],
+                'acceptedAnswer' => ['@type' => 'Answer', 'text' => $x['c']],
+            ], $sss),
+        ],
+    ],
+];
 
-    // ── Giriş ────────────────────────────────────────────────
-    if ($islem === 'giris') {
-        $kullanici_adi = trim($_POST['kullanici_adi'] ?? '');
-        $sifre         = $_POST['sifre'] ?? '';
+// Özellik kartları
+$ozellikler = [
+    ['💰', 'Otomatik Aidat Takibi',   'Dönem aralığı seçin, tüm daireler için aidat kayıtları saniyeler içinde oluşsun. Ödeme geldikçe tek tıkla işaretleyin.'],
+    ['💬', 'WhatsApp Bildirimleri',   'Borçlu daire sakinine ödenmemiş dönemleri içeren hazır mesajı WhatsApp üzerinden tek tıkla iletin.'],
+    ['📊', 'Gelir & Gider Raporları', 'Kategori bazlı gider takibi, tahsilat oranı ve aylık gelir-gider trendiyle kasanın durumunu anlık görün.'],
+    ['🖨️', 'Tek Tıkla A4 Rapor',      'Aidat, gider, trend ve daire geçmişi raporlarını imza alanlı, A4’e optimize düzende yazdırın.'],
+    ['🏢', 'Kolay Daire Yönetimi',    'Daire, kat, sakin, telefon ve aidat tutarını tek ekrandan yönetin; her daire için tüm dönem geçmişini görün.'],
+    ['📱', 'Mobil Uyumlu Panel',      'Telefon, tablet ve masaüstünde aynı deneyim. Uygulama kurmadan tarayıcıdan yönetin.'],
+];
 
-        if (!$kullanici_adi || !$sifre) {
-            $hata = 'Kullanıcı adı ve şifre zorunludur.';
-        } else {
-            $stmt = db()->prepare("SELECT * FROM kullanicilar WHERE kullanici_adi = ?");
-            $stmt->execute([$kullanici_adi]);
-            $k = $stmt->fetch();
-
-            if ($k && password_verify($sifre, $k['sifre_hash'])) {
-                session_regenerate_id(true);
-                $_SESSION['kullanici_id']  = $k['id'];
-                $_SESSION['kullanici_adi'] = $k['kullanici_adi'];
-                $_SESSION['apartman_adi']  = $k['apartman_adi'];
-                $_SESSION['toplam_daire']  = $k['toplam_daire'];
-                $_SESSION['tema']          = $k['tema'] ?? 'koyu'; 
-                $_SESSION['son_islem']     = time();
-
-                // Log kaydet
-                db()->prepare("INSERT INTO oturum_loglari (kullanici_id, ip_adresi) VALUES (?, ?)")
-                    ->execute([$k['id'], $_SERVER['REMOTE_ADDR'] ?? '']);
-
-                header('Location: /dashboard.php');
-                exit;
-            } else {
-                $hata = 'Kullanıcı adı veya şifre hatalı.';
-            }
-        }
-    }
-
-    // ── Kayıt ────────────────────────────────────────────────
-    if ($islem === 'kayit') {
-        $kullanici_adi  = trim($_POST['kullanici_adi'] ?? '');
-        $sifre          = $_POST['sifre'] ?? '';
-        $sifre2         = $_POST['sifre2'] ?? '';
-        $apartman_adi   = trim($_POST['apartman_adi'] ?? '');
-        $toplam_daire   = max(1, min(200, (int)($_POST['toplam_daire'] ?? 10)));
-
-        if (!$kullanici_adi || !$sifre || !$apartman_adi) {
-            $hata = 'Tüm zorunlu alanları doldurun.';
-        } elseif (strlen($sifre) < 6) {
-            $hata = 'Şifre en az 6 karakter olmalıdır.';
-        } elseif ($sifre !== $sifre2) {
-            $hata = 'Şifreler eşleşmiyor.';
-        } elseif (!preg_match('/^[a-zA-Z0-9_]+$/', $kullanici_adi)) {
-            $hata = 'Kullanıcı adı sadece harf, rakam ve _ içerebilir.';
-        } else {
-            // Kullanıcı adı müsait mi?
-            $stmt = db()->prepare("SELECT id FROM kullanicilar WHERE kullanici_adi = ?");
-            $stmt->execute([$kullanici_adi]);
-            if ($stmt->fetch()) {
-                $hata = 'Bu kullanıcı adı zaten kullanımda.';
-            } else {
-                $pdo = db();
-                $pdo->beginTransaction();
-                try {
-                    // Kullanıcı oluştur
-                    $pdo->prepare("INSERT INTO kullanicilar (kullanici_adi, sifre_hash, apartman_adi, toplam_daire)
-                                   VALUES (?, ?, ?, ?)")
-                        ->execute([$kullanici_adi, password_hash($sifre, PASSWORD_DEFAULT),
-                                   $apartman_adi, $toplam_daire]);
-                    $yeni_id = (int)$pdo->lastInsertId();
-
-                    // Daireları oluştur
-                    $ins = $pdo->prepare("INSERT INTO daireler (kullanici_id, daire_no, aylik_aidat) VALUES (?, ?, 500)");
-                    for ($i = 1; $i <= $toplam_daire; $i++) {
-                        $ins->execute([$yeni_id, $i]);
-                    }
-                    $pdo->commit();
-                    $basari = 'Kaydınız oluşturuldu! Giriş yapabilirsiniz.';
-                    $mod = 'giris';
-                } catch (Exception $ex) {
-                    $pdo->rollBack();
-                    $hata = 'Kayıt sırasında hata oluştu. Lütfen tekrar deneyin.';
-                }
-            }
-        }
-    }
-}
+// "Neden AYS?" maddeleri
+$avantajlar = [
+    ['⏱️', 'Zaman tasarrufu',   'Excel tablolarıyla uğraşmayı bırakın. Toplu dönem oluşturma ve toplu ödeme girişiyle aylık rutin dakikalar sürer.'],
+    ['🔍', 'Şeffaf yönetim',    'Hangi daire ne ödedi, para nereye gitti? Dekont numarasına kadar kayıt altında, denetime hazır.'],
+    ['📱', 'Her yerden erişim', 'Kapıcıyla konuşurken telefondan, toplantıda tabletten. Verileriniz her cihazda güncel.'],
+    ['🔒', 'Güvenli altyapı',   'Şifreli parola saklama, CSRF korumalı formlar ve apartmanlar arası tam veri izolasyonu.'],
+];
 ?>
 <!DOCTYPE html>
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AYS — Giriş</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0d0d1a">
+
+  <title><?= e($sayfa_basi) ?></title>
+  <meta name="description" content="<?= e($aciklama) ?>">
+  <meta name="keywords" content="apartman yönetim yazılımı, site aidat takip sistemi, aidat takip programı, apartman aidat takibi, site yönetim programı, apartman yönetim sistemi, aidat tahsilat takibi, apartman gider takibi">
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+  <meta name="author" content="AYS">
+  <link rel="canonical" href="<?= e($site_url) ?>/">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="<?= e($site_adi) ?>">
+  <meta property="og:locale" content="tr_TR">
+  <meta property="og:title" content="<?= e($sayfa_basi) ?>">
+  <meta property="og:description" content="<?= e($aciklama) ?>">
+  <meta property="og:url" content="<?= e($site_url) ?>/">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="<?= e($sayfa_basi) ?>">
+  <meta name="twitter:description" content="<?= e($aciklama) ?>">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/style.css">
+  <link rel="stylesheet" href="/assets/landing.css">
+
+  <script type="application/ld+json">
+  <?= json_encode($jsonld, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?>
+  </script>
 </head>
-<body class="auth-body">
+<body class="lp-body">
 
-<div class="auth-bg">
-  <?php for ($i = 0; $i < 5; $i++): ?>
-    <div class="auth-orb auth-orb-<?= $i ?>"></div>
-  <?php endfor; ?>
-</div>
+<a href="#lp-main" class="lp-skip">İçeriğe geç</a>
 
-<div class="auth-card">
-  <div class="auth-header">
-    <div class="auth-logo">🏢</div>
-    <h1 class="auth-title">AYS</h1>
-    <p class="auth-subtitle">Apartman Yönetim Sistemi</p>
+<!-- ══ ÜST BAR ═══════════════════════════════════════════════ -->
+<header class="lp-nav">
+  <div class="lp-container lp-nav-inner">
+    <a href="/" class="lp-brand" aria-label="AYS ana sayfa">
+      <span class="lp-brand-icon">🏢</span>
+      <span class="lp-brand-text">AYS</span>
+    </a>
+    <nav class="lp-nav-links" aria-label="Bölümler">
+      <a href="#ozellikler">Özellikler</a>
+      <a href="#neden">Neden AYS?</a>
+      <a href="#sss">SSS</a>
+    </nav>
+    <div class="lp-nav-cta">
+      <a href="/login.php" class="lp-btn lp-btn-ghost">Giriş Yap</a>
+      <a href="/login.php?mod=kayit" class="lp-btn lp-btn-primary">Hemen Başla</a>
+    </div>
   </div>
+</header>
 
-  <div class="tab-bar">
-    <a href="?mod=giris" class="tab-btn <?= $mod === 'giris' ? 'active' : '' ?>">Giriş Yap</a>
-    <a href="?mod=kayit" class="tab-btn <?= $mod === 'kayit' ? 'active' : '' ?>">Yeni Kayıt</a>
+<main id="lp-main">
+
+  <!-- ══ HERO ════════════════════════════════════════════════ -->
+  <section class="lp-hero">
+    <div class="lp-hero-bg" aria-hidden="true">
+      <span class="lp-orb lp-orb-1"></span>
+      <span class="lp-orb lp-orb-2"></span>
+      <span class="lp-orb lp-orb-3"></span>
+    </div>
+    <div class="lp-container lp-hero-inner">
+      <p class="lp-badge">Apartman ve site yönetimleri için</p>
+      <h1 class="lp-hero-title">
+        Aidat takibi artık<br><span class="lp-grad">dakikalar sürüyor</span>
+      </h1>
+      <p class="lp-hero-sub">
+        AYS; aidat tahsilatını, giderleri ve daire bilgilerini tek panelde toplar.
+        WhatsApp ile borç bildirir, gelir-gider raporlarını A4 düzeninde yazdırır.
+        Kurulum yok, mobil uyumlu, ücretsiz başlayın.
+      </p>
+      <div class="lp-hero-cta">
+        <a href="/login.php?mod=kayit" class="lp-btn lp-btn-primary lp-btn-lg">Hemen Başla — Ücretsiz</a>
+        <a href="/login.php" class="lp-btn lp-btn-outline lp-btn-lg">Giriş Yap</a>
+      </div>
+      <ul class="lp-hero-points">
+        <li>✓ Kredi kartı gerekmez</li>
+        <li>✓ Kurulum gerektirmez</li>
+        <li>✓ Sınırsız dönem kaydı</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ══ ÖZELLİKLER ══════════════════════════════════════════ -->
+  <section id="ozellikler" class="lp-section">
+    <div class="lp-container">
+      <header class="lp-section-head">
+        <p class="lp-eyebrow">Özellikler</p>
+        <h2 class="lp-section-title">Bir yönetimin ihtiyacı olan her şey</h2>
+        <p class="lp-section-sub">
+          Aidat toplamaktan rapor sunmaya kadar tüm süreç tek sistemde.
+        </p>
+      </header>
+      <div class="lp-grid lp-grid-3">
+        <?php foreach ($ozellikler as [$ikon, $baslik, $metin]): ?>
+        <article class="lp-card">
+          <span class="lp-card-icon" aria-hidden="true"><?= $ikon ?></span>
+          <h3 class="lp-card-title"><?= e($baslik) ?></h3>
+          <p class="lp-card-text"><?= e($metin) ?></p>
+        </article>
+        <?php endforeach; ?>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ NEDEN AYS ═══════════════════════════════════════════ -->
+  <section id="neden" class="lp-section lp-section-alt">
+    <div class="lp-container">
+      <header class="lp-section-head">
+        <p class="lp-eyebrow">Avantajlar</p>
+        <h2 class="lp-section-title">Neden AYS?</h2>
+        <p class="lp-section-sub">
+          Yönetici defteri, dağınık Excel dosyaları ve kaybolan dekontlar geride kalsın.
+        </p>
+      </header>
+      <div class="lp-grid lp-grid-2">
+        <?php foreach ($avantajlar as [$ikon, $baslik, $metin]): ?>
+        <div class="lp-benefit">
+          <span class="lp-benefit-icon" aria-hidden="true"><?= $ikon ?></span>
+          <div>
+            <h3 class="lp-benefit-title"><?= e($baslik) ?></h3>
+            <p class="lp-card-text"><?= e($metin) ?></p>
+          </div>
+        </div>
+        <?php endforeach; ?>
+      </div>
+
+      <div class="lp-cta-band">
+        <div>
+          <h2 class="lp-cta-title">Apartmanınızı bugün kurun</h2>
+          <p class="lp-cta-text">Kayıt olun, daire sayınızı girin — sistem sizin için hazırlansın.</p>
+        </div>
+        <a href="/login.php?mod=kayit" class="lp-btn lp-btn-primary lp-btn-lg">Ücretsiz Hesap Oluştur</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ SSS ═════════════════════════════════════════════════ -->
+  <section id="sss" class="lp-section">
+    <div class="lp-container lp-narrow">
+      <header class="lp-section-head">
+        <p class="lp-eyebrow">SSS</p>
+        <h2 class="lp-section-title">Sıkça Sorulan Sorular</h2>
+      </header>
+      <div class="lp-faq">
+        <?php foreach ($sss as $i => $x): ?>
+        <details class="lp-faq-item"<?= $i === 0 ? ' open' : '' ?>>
+          <summary class="lp-faq-q"><?= e($x['s']) ?><span class="lp-faq-mark" aria-hidden="true"></span></summary>
+          <div class="lp-faq-a"><p><?= e($x['c']) ?></p></div>
+        </details>
+        <?php endforeach; ?>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ══ FOOTER ════════════════════════════════════════════════ -->
+<footer class="lp-footer">
+  <div class="lp-container lp-footer-inner">
+    <div class="lp-footer-brand">
+      <a href="/" class="lp-brand">
+        <span class="lp-brand-icon">🏢</span>
+        <span class="lp-brand-text">AYS</span>
+      </a>
+      <p class="lp-footer-desc">
+        Apartman ve site yönetimleri için aidat, gider ve raporlama yazılımı.
+      </p>
+    </div>
+
+    <nav class="lp-footer-col" aria-label="Hızlı bağlantılar">
+      <h3>Hızlı Bağlantılar</h3>
+      <a href="#ozellikler">Özellikler</a>
+      <a href="#neden">Neden AYS?</a>
+      <a href="#sss">Sıkça Sorulan Sorular</a>
+    </nav>
+
+    <nav class="lp-footer-col" aria-label="Hesap">
+      <h3>Hesap</h3>
+      <a href="/login.php">Giriş Yap</a>
+      <a href="/login.php?mod=kayit">Yeni Kayıt</a>
+    </nav>
+
+    <div class="lp-footer-col">
+      <h3>Destek</h3>
+      <p class="lp-footer-desc">
+        Soru ve önerileriniz için yönetim panelindeki iletişim bilgilerinden
+        bize ulaşabilirsiniz.
+      </p>
+    </div>
   </div>
-
-  <?php if ($hata): ?>
-    <div class="alert alert-error">✕ <?= e($hata) ?></div>
-  <?php endif; ?>
-  <?php if ($basari): ?>
-    <div class="alert alert-success">✓ <?= e($basari) ?></div>
-  <?php endif; ?>
-
-  <?php if ($mod === 'giris'): ?>
-  <!-- GİRİŞ FORMU -->
-  <form method="post" class="auth-form">
-    <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
-    <input type="hidden" name="islem" value="giris">
-    <div class="form-group">
-      <label>Kullanıcı Adı</label>
-      <input type="text" name="kullanici_adi" class="input" placeholder="kullanici_adi"
-             value="<?= e($_POST['kullanici_adi'] ?? '') ?>" required autofocus>
-    </div>
-    <div class="form-group">
-      <label>Şifre</label>
-      <input type="password" name="sifre" class="input" placeholder="••••••••" required>
-    </div>
-    <button type="submit" class="btn btn-primary btn-block">Giriş Yap</button>
-  </form>
-
-  <?php else: ?>
-  <!-- KAYIT FORMU -->
-  <form method="post" class="auth-form">
-    <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
-    <input type="hidden" name="islem" value="kayit">
-    <div class="form-group">
-      <label>Kullanıcı Adı <span class="req">*</span></label>
-      <input type="text" name="kullanici_adi" class="input" placeholder="harf_rakam_alt_cizgi"
-             value="<?= e($_POST['kullanici_adi'] ?? '') ?>" required pattern="[a-zA-Z0-9_]+">
-    </div>
-    <div class="form-group">
-      <label>Apartman Adı <span class="req">*</span></label>
-      <input type="text" name="apartman_adi" class="input" placeholder="örn: Gül Apartmanı"
-             value="<?= e($_POST['apartman_adi'] ?? '') ?>" required>
-    </div>
-    <div class="form-group">
-      <label>Toplam Daire Sayısı</label>
-      <input type="number" name="toplam_daire" class="input" min="1" max="200"
-             value="<?= e($_POST['toplam_daire'] ?? '10') ?>">
-    </div>
-    <div class="form-group">
-      <label>Şifre <span class="req">*</span></label>
-      <input type="password" name="sifre" class="input" placeholder="En az 6 karakter" required minlength="6">
-    </div>
-    <div class="form-group">
-      <label>Şifre Tekrar <span class="req">*</span></label>
-      <input type="password" name="sifre2" class="input" placeholder="Şifrenizi tekrar girin" required>
-    </div>
-    <button type="submit" class="btn btn-primary btn-block">Apartmanımı Kur</button>
-  </form>
-  <?php endif; ?>
-</div>
+  <div class="lp-container lp-footer-bottom">
+    <p>&copy; <?= date('Y') ?> AYS — Apartman Yönetim Sistemi. Tüm hakları saklıdır.</p>
+  </div>
+</footer>
 
 </body>
 </html>
