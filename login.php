@@ -62,6 +62,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 db()->prepare("INSERT INTO oturum_loglari (kullanici_id, ip_adresi) VALUES (?, ?)")
                     ->execute([$k['id'], $_SERVER['REMOTE_ADDR'] ?? '']);
 
+                // son_giris, platform panelindeki "aylık aktif kullanıcı"
+                // ve site listesindeki "son giriş" sütununu besler.
+                // Sütun göç 004 ile geldiği için ayrı ve hatası yutulan
+                // bir sorgu: göç uygulanmamış sunucuda giriş bozulmasın.
+                if (platform_semasi_hazir_mi()) {
+                    try {
+                        db()->prepare("UPDATE kullanicilar SET son_giris = NOW() WHERE id = ?")
+                            ->execute([$k['id']]);
+                    } catch (Throwable $ex) {
+                        error_log('son_giris güncellenemedi: ' . $ex->getMessage());
+                    }
+                }
+                denetim_yaz('giris_basarili', 'kullanici', (int)$k['id'], [], (int)$k['id']);
+
                 header('Location: /dashboard.php');
                 exit;
             } else {

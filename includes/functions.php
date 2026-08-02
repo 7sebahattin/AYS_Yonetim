@@ -10,6 +10,7 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/varsayilanlar.php';
 require_once __DIR__ . '/denetim.php';
 require_once __DIR__ . '/hiz_limiti.php';
+require_once __DIR__ . '/platform.php';
 
 // ─── Şema hazırlık kontrolü ─────────────────────────────────
 // Dosyalar sunucuya kopyalandıktan sonra göç (migration) elle
@@ -181,6 +182,8 @@ function giris_kontrol(): array {
     $_SESSION['son_islem'] = time();
     $kullanici_id = (int)$_SESSION['kullanici_id'];
 
+    platform_erisim_kontrolu($kullanici_id);
+
     // Site modeli göçü uygulanmadıysa eski (tek site) davranışına düş.
     if (!site_semasi_hazir_mi()) {
         return [
@@ -221,6 +224,48 @@ function giris_kontrol(): array {
         'toplam_daire'  => (int)$site['toplam_daire'],
         'tema'          => $_SESSION['tema'] ?? 'koyu',
     ];
+}
+
+// ─── Platform düzeyi erişim kontrolü ────────────────────────
+// giris_kontrol() içinden her istekte çağrılır. İki şeyi zorlar:
+//
+//  1. BAKIM MODU — açıkken normal kullanıcı panele giremez. Süper
+//     admin ve destek girebilir; aksi halde bakım modunu kapatacak
+//     kişi de dışarıda kalırdı.
+//
+//  2. SALT-OKUNUR KİMLİĞE BÜRÜNME — süper admin bir kullanıcının
+//     ekranını görürken varsayılan olarak HİÇBİR ŞEY YAZAMAZ. Kontrol
+//     tek noktada, POST düzeyinde yapılır: her panel sayfası
+//     giris_kontrol() ile başladığı için yeni bir sayfa eklendiğinde
+//     bu koruma kendiliğinden geçerli olur — tek tek hatırlanması
+//     gereken bir kontrol bırakılmaz.
+function platform_erisim_kontrolu(int $kullanici_id): void
+{
+    if (!platform_semasi_hazir_mi()) return;
+
+    if (kimlige_burunuluyor_mu()
+        && $_SERVER['REQUEST_METHOD'] === 'POST'
+        && !burunme_yazabilir_mi()) {
+        denetim_yaz('burunme_yazma_reddedildi', 'kullanici', $kullanici_id,
+                    ['yol' => $_SERVER['PHP_SELF'] ?? '']);
+        http_response_code(403);
+        die('<div style="font-family:sans-serif;padding:40px;max-width:520px">'
+          . '<h2>Bu oturum salt-okunur</h2>'
+          . '<p>Kullanıcı adına görüntüleme sırasında veri değiştirilemez. '
+          . 'Yazma yetkisi gerekiyorsa yönetim panelinden açılmalıdır.</p>'
+          . '<p><a href="/yonetim/burun.php?islem=bitir">Görüntülemeyi bitir</a></p></div>');
+    }
+
+    if (!bakim_modu_aktif_mi()) return;
+
+    // Bürünme sırasında rol kontrolü HEDEF kullanıcıya bakar; gerçek
+    // aktör süper admindir. Panelde kimliği doğrulanmış bir yönetici
+    // (yonetim_id) varsa bakım modu onu engellemez.
+    if (!empty($_SESSION['yonetim_id'])) return;
+
+    if (!platform_yetkili_mi(platform_rolu($kullanici_id))) {
+        bakim_sayfasi_goster();
+    }
 }
 
 // ─── Site (çoklu apartman) desteği ──────────────────────────

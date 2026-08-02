@@ -14,6 +14,7 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 - Yazdırılabilir A4 raporlar (aidat, gider, trend, tam rapor, daire detay raporu)
 - Açık/koyu tema
 - Progressive Web App: ana ekrana yüklenebilir, uygulama gibi açılır
+- **Platform yönetim paneli** (`/yonetim/`): tüm siteler, kullanıcılar, denetim kaydı, sistem duyuruları, tanıtım sayfası içeriği ve bakım modu — zorunlu iki faktörlü doğrulama arkasında
 
 ## Klasör Yapısı
 
@@ -35,6 +36,21 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 ├─ eposta_dogrula.php     → E-posta adresi doğrulama
 ├─ site_sec.php           → Aktif site değiştirme (çok siteli kullanıcılar)
 ├─ goc.php                → Şema göçü (web arayüzü, anahtarla korumalı)
+├─ yonetim/               → Platform yönetim paneli (süper admin)
+│  ├─ ortak.php            → Panel önyükleme + yetki bekçisi
+│  ├─ giris.php            → Ayrı giriş yolu (şifre + zorunlu 2FA)
+│  ├─ index.php            → Platform istatistikleri
+│  ├─ siteler.php / site_detay.php → Tüm siteler, askıya alma, destek işlemleri
+│  ├─ kullanicilar.php     → Platform rolü, şifre sıfırlama, 2FA sıfırlama
+│  ├─ duyurular.php        → Sistem duyuruları
+│  ├─ icerik.php           → Tanıtım sayfası metinleri ve SSS
+│  ├─ denetim.php          → Denetim kaydı görünümü (filtreli)
+│  ├─ goc.php              → Göçleri panelden çalıştırma
+│  ├─ ayarlar.php          → Bakım modu, IP kısıtı, bürünme yazma izni
+│  ├─ iki_faktor.php       → TOTP kurulumu ve yedek kodlar
+│  ├─ burun.php            → Kullanıcı adına görüntüleme başlat/bitir
+│  └─ kurulum.php          → İlk süper admin atama (tek seferlik)
+├─ araclar/superadmin_ata.php → Platform rolü atama (CLI)
 ├─ config.php             → Veritabanı + SMTP ayarları (deploy EDİLMEZ)
 ├─ manifest.json          → PWA manifest (ad, ikonlar, tema rengi)
 ├─ sw.js                  → Service worker (yalnızca statik varlıkları önbelleğe alır)
@@ -51,6 +67,9 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 │  ├─ denetim.php          → Denetim kaydı (audit log)
 │  ├─ hiz_limiti.php       → Hız sınırlama (brute-force / spam koruması)
 │  ├─ dosya.php            → Dosya yükleme ve güvenli saklama
+│  ├─ platform.php         → Platform rolleri, bakım modu, duyurular, bürünme
+│  ├─ totp.php             → İki faktörlü doğrulama (RFC 6238 TOTP)
+│  ├─ tanitim_icerik.php   → Tanıtım sayfası varsayılan metinleri
 │  └─ header.php / footer.php / print_utils.php
 └─ assets/                → CSS/JS dosyaları
    ├─ style.css            → Panel stilleri (mobil dahil)
@@ -79,8 +98,10 @@ Kök adres (`index.php`) herkese açık bir tanıtım sayfasıdır: hero, özell
 - Anahtar kelime odaklı `<title>`, meta description ve keywords (*apartman yönetim
   yazılımı*, *site aidat takip sistemi* vb.), `canonical`, Open Graph ve Twitter Card etiketleri.
 - **JSON-LD yapısal veri**: `SoftwareApplication` künyesi + `FAQPage`. SSS içeriği tek
-  bir PHP dizisinden hem sayfaya hem yapısal veriye yazılır; böylece Google'ın
-  uyuşmazlık cezasına yol açan HTML ↔ schema farkı oluşamaz.
+  kaynaktan hem sayfaya hem yapısal veriye yazılır; böylece Google'ın uyuşmazlık
+  cezasına yol açan HTML ↔ schema farkı oluşamaz.
+- Başlık, meta açıklama, hero metni ve SSS **yönetim panelinden düzenlenebilir**
+  (bkz. "Platform Yönetimi"); kayıt yoksa koddaki varsayılan metin kullanılır.
 - SSS accordion'u JavaScript'siz `<details>/<summary>` ile kurulmuştur — içerik ilk
   HTML yanıtında yer aldığı için tarayıcı ve arama motoru tarafından okunabilir.
 - `login.php` `noindex, follow` ile işaretlidir; ince/yinelenen içeriğin indekslenmesini
@@ -219,6 +240,147 @@ daire listesinde blok sütunu gösterilmez.
 eski `kullanici_id` tabanlı davranışa düşer, site seçici ve blok arayüzü gizlenir.
 Bu, "önce deploy, sonra göç" sırasının güvenli olmasını sağlar.
 
+## Platform Yönetimi (Süper Admin Paneli)
+
+> Göç: `semalar/004_platform_yonetimi.sql` · Panel: `/yonetim/`
+
+Bugüne kadar sistemde yalnızca **kiracı** düzeyi vardı: her yönetici kendi
+apartmanını görüyor, platformun tamamına bakan bir katman bulunmuyordu. Bir sorunu
+teşhis etmek, bir hesabı askıya almak ya da tanıtım sayfasındaki bir yazım hatasını
+düzeltmek için veritabanına elle girmek veya yeniden deploy etmek gerekiyordu.
+
+`/yonetim/` bu boşluğu dolduruyor. Site içi rollerden (`yonetici`/`muhasebe`/`denetci`)
+**bağımsız** bir platform rolü kullanır — ikisi karıştırılsaydı her apartman yöneticisi
+tüm apartmanların verisine erişir hale gelirdi.
+
+### Platform rolleri — `kullanicilar.platform_rolu`
+
+| Rol | Yetki |
+|---|---|
+| `kullanici` | Varsayılan. Panele erişemez. |
+| `destek` | Panele girer, her şeyi **görür**, hiçbir şeyi değiştiremez. |
+| `superadmin` | Tam yetki: ayarlar, içerik, göç, kimliğe bürünme. |
+
+Salt-okunurluk arayüzde düğme gizlemekle değil, `yonetim_kontrol(true)` bekçisiyle
+**sunucu tarafında** uygulanır: `destek` rolüyle gönderilen her POST 403 döner ve
+denetim kaydına yazılır.
+
+### İlk süper admin (yumurta-tavuk)
+
+Göç **hiç kimseye** süper admin yetkisi vermez — sessizce `id=1`'i yetkilendirseydi
+kimin ne zaman yetkilendiği denetlenemez olurdu. İlk atama bilinçli bir adımdır:
+
+```bash
+php araclar/superadmin_ata.php liste            # mevcut platform yetkilileri
+php araclar/superadmin_ata.php <kullanici_adi>  # süper admin yap
+php araclar/superadmin_ata.php <kullanici_adi> destek
+```
+
+SSH erişimi yoksa `/yonetim/kurulum.php` aynı işi yapar, ama **iki koşul birlikte**
+aranır: sistemde hiç süper admin olmamalı **ve** `config.php`'deki `GOC_ANAHTARI`
+bilinmeli. İlk atama yapıldığı anda sayfa kendini kapatır.
+
+Son süper adminin yetkisi ne panelden ne CLI'dan kaldırılabilir: panele girecek kimse
+kalmazdı ve rol atamak için de panel gerekirdi — sistem kendini kilitlerdi.
+
+### Zorunlu iki faktörlü doğrulama (TOTP)
+
+Panel tüm kiracıların mali ve kişisel verisine eriştiği için tek şifreyle korunması
+kabul edilmedi. `includes/totp.php` bağımlılıksız bir RFC 6238 uygulamasıdır
+(Google Authenticator, Authy, Microsoft Authenticator ile uyumlu; RFC test
+vektörlerine karşı doğrulanmıştır).
+
+- **2FA kurulu olmayan hesap panele alınmaz** — şifre doğru olsa bile.
+- Kurulum `/yonetim/iki_faktor.php` üzerinden yapılır ve bilinçli olarak **normal
+  uygulama oturumu** ister, panel oturumu değil: aksi halde 2FA'yı kurmak için panele,
+  panele girmek için 2FA'ya ihtiyaç duyulan kapalı bir döngü oluşurdu.
+- **Gizli anahtar, kullanıcı geçerli bir kod üretebildiğini kanıtlayana kadar
+  veritabanına yazılmaz.** Yanlış kurulmuş bir doğrulayıcı yüzünden hesap kilitlenmez.
+- **Tekrar kullanım engeli**: doğrulanan zaman adımı `totp_son_adim` sütununda saklanır;
+  aynı 6 haneli kod 30 saniyelik pencerede ikinci kez kabul edilmez.
+- **Yedek kodlar**: 8 adet tek kullanımlık kod üretilir, yalnızca bir kez gösterilir ve
+  veritabanında `password_hash()` ile saklanır. Telefon kaybedilirse tek kurtuluş yolu
+  budur; tükenirse bir başka süper admin panelden 2FA'yı sıfırlayabilir (bu yetki
+  **vermez**, yalnızca kaydı siler — kullanıcı kurulumu baştan yapmak zorundadır).
+
+**QR kodu neden yok:** QR üretmek ya harici bir servise başvurmayı (TOTP gizli
+anahtarını üçüncü tarafa göndermek — kabul edilemez) ya da projeye bir QR kütüphanesi
+eklemeyi gerektirirdi. Bunun yerine anahtar okunabilir bloklar hâlinde gösterilir; tüm
+doğrulayıcı uygulamalar "anahtarı elle gir" seçeneğini destekler.
+
+### Kullanıcı adına görüntüleme (impersonation)
+
+Sistemin en hassas yetkisi: bir süper admin herhangi bir yöneticinin ekranını olduğu
+gibi görebilir. Destek için gerekli — kullanıcı "bende şöyle görünüyor" dediğinde tek
+güvenilir yol — ama kötüye kullanımı tüm kiracıların verisini açar. Dört kural
+pazarlık dışıdır:
+
+1. **Varsayılan salt-okunur.** Yazma, `burunme_yazma_izni` platform ayarıyla ayrıca
+   açılır. Kontrol `giris_kontrol()` içindeki **tek bir noktadadır** (POST düzeyinde),
+   dolayısıyla yeni bir sayfa eklendiğinde koruma kendiliğinden geçerli olur —
+   tek tek hatırlanması gereken bir kontrol bırakılmaz.
+2. **Her şey denetim kaydına.** Başlangıç, bitiş ve süre yazılır; arada yapılan her
+   işlem `burunen_yonetici_id` ile etiketlenir — aksi halde denetim izi eylemi masum
+   kullanıcının üstüne yazardı.
+3. **Platform yetkilisinin adına bürünülemez.** Aksi halde bir `destek` hesabı bir
+   süper adminin adına bürünüp kendi rolünü yükseltebilirdi.
+4. **Kapatılamaz uyarı bandı.** Ekranın başkasının verisi olduğunu unutmak, yanlış
+   apartmanda işlem yapmakla sonuçlanır.
+
+Oturum modeli bunu mümkün kılan şeydir: `$_SESSION['yonetim_id']` (gerçek yönetici) ile
+`$_SESSION['kullanici_id']` (uygulamanın gördüğü kişi) **ayrı** anahtarlardır. Tek
+anahtar kullanılsaydı bürünme sırasında panel yetkisi de hedef kullanıcıya geçerdi.
+Bürünme başlarken yöneticinin kendi uygulama oturumu saklanır, bitince geri yüklenir.
+
+### Bakım modu
+
+Açıkken normal kullanıcı panele giremez; `503` ve `Retry-After` ile bir bakım sayfası
+görür. Platform yetkilileri erişmeye devam eder — aksi halde bakım modunu kapatacak
+kişi de dışarıda kalırdı. Tanıtım sayfası ve giriş ekranı etkilenmez.
+
+### Sistem duyuruları
+
+Panellerin üstünde bant olarak görünür. Tarih aralığı verilerek zamanlanabilir
+(`baslangic`/`bitis`) ve `site_id` ile tek bir apartmana hedeflenebilir; boş bırakılırsa
+tüm sitelere gider.
+
+### Tanıtım sayfası içerik yönetimi
+
+Hero metni, SEO künyesi ve SSS bugüne kadar `index.php` içine gömülüydü — bir yazım
+düzeltmesi için bile deploy gerekiyordu. Artık `icerik_bloklari` ve `sss_kayitlari`
+tablolarından okunur ve `/yonetim/icerik.php` üzerinden düzenlenir.
+
+- **Kayıt yoksa koddaki varsayılana düşülür** (`includes/tanitim_icerik.php`), yani
+  tablolar boş olsa da ya da göç uygulanmamış olsa da sayfa eksiksiz çizilir.
+- SSS içeriği hem sayfada hem `FAQPage` yapısal verisinde **tek kaynaktan** kullanılır;
+  HTML ile schema.org arasındaki uyuşmazlık Google tarafından cezalandırılır.
+- Hero başlığında `|` işareti satır sonudur; sonraki bölüm vurgu (degrade) rengiyle
+  çizilir. Ayraç yoksa başlık tek parça gösterilir.
+
+### Panel güvenlik önlemleri
+
+- **Ayrı giriş yolu** (`/yonetim/giris.php`), uygulama girişinden bağımsız.
+- **Hız sınırlama iki eksende**: IP başına 10/15 dk (dağıtık deneme) ve kullanıcı adı
+  başına 5/15 dk (tek hesaba yoğunlaşma).
+- **Hata mesajları hangi adımın yanlış olduğunu sızdırmaz**: "böyle bir kullanıcı yok",
+  "şifre yanlış" ve "bu hesabın panel yetkisi yok" durumlarının hepsi aynı mesajı verir
+  — kullanıcı adı sayımına ve rol keşfine kapalıdır.
+- **Rol her istekte veritabanından okunur**, oturumda saklanmaz: yetki geri alındığında
+  oturum anında düşer.
+- **İsteğe bağlı IP kısıtı** (tek IP veya CIDR). Kilitlenme koruması vardır: kendi IP
+  adresiniz listede değilse kayıt reddedilir. Dinamik IP kullanıyorsanız (çoğu ev
+  bağlantısı) bu kısıtı açmayın.
+- Tüm panel yanıtlarında `X-Robots-Tag: noindex, nofollow`.
+- **Denetim kaydı yalnızca okunur**: panelden silme veya düzenleme yolu bilinçli olarak
+  yoktur — silinebilen bir denetim izi denetim izi değildir.
+
+### Panelden göç çalıştırma
+
+`/yonetim/goc.php`, kök dizindeki `/goc.php` ile aynı işi farklı bir kapıdan yapar:
+orada `GOC_ANAHTARI` gerekir (henüz süper admin yokken), burada kimliği doğrulanmış bir
+süper admin oturumu yeterlidir. Yedek onay kutusu işaretlenmeden düğme çalışmaz —
+MySQL/MariaDB'de DDL transaction'a girmez, yarıda kalan bir göç geri alınamaz.
+
 ## Güvenlik Notları
 
 - Tüm veritabanı sorguları PDO prepared statement kullanır; ham SQL birleştirmesi yoktur.
@@ -231,11 +393,13 @@ Bu, "önce deploy, sonra göç" sırasının güvenli olmasını sağlar.
 - Veritabanı bağlantı hataları kullanıcıya detay sızdırmaz; hata sunucu log'una (`error_log`) yazılır, kullanıcıya jenerik bir mesaj gösterilir.
 - Her sorgu **aktif sitenin** `site_id` değeriyle filtrelenir (`$kullanici['site_id']`); aktif site her istekte `kullanici_site_yetkileri` üzerinden yeniden doğrulanır, oturumdaki değere güvenilmez. Kiracılar (binalar) arası veri sızıntısını önlemek için bu izolasyon tüm modüllerde korunmalıdır — bkz. "Kimlik, Site ve Blok Modeli".
 - Kullanıcıya ait olmayan bir kayda id ile doğrudan erişim denemesi (`daire_detay.php?id=…`, `daire_print.php?id=…`) sorgu düzeyinde `site_id` filtresine takılır; yetkisiz istek veri döndürmez.
+- Platform yönetim paneli (`/yonetim/`) ayrı bir giriş yolu, zorunlu TOTP, iki eksenli hız sınırlama ve isteğe bağlı IP kısıtı ile korunur; her panel işlemi denetim kaydına yazılır — bkz. "Platform Yönetimi".
 
 **Bilinen sınırlamalar / öneriler:**
-- Giriş formunda kaba kuvvet (brute-force) koruması (deneme sınırı, kilitleme, CAPTCHA) bulunmuyor.
+- Uygulama giriş formunda (`login.php`) kaba kuvvet koruması yok; hız sınırlama şimdilik yalnızca şifre sıfırlama ve yönetim panelinde uygulanıyor.
 - ~~Şifre sıfırlama (e-posta ile) akışı yok.~~ → Eklendi, bkz. "Şifre Sıfırlama & E-posta Doğrulama".
 - Minimum şifre uzunluğu 6 karakterdir, karmaşıklık zorunluluğu yoktur.
+- İki faktörlü doğrulama yalnızca platform yetkilileri için zorunludur; normal kullanıcılara henüz sunulmuyor (altyapı `includes/totp.php` içinde hazır).
 
 ## Şema Göçü (Migration)
 
@@ -270,13 +434,23 @@ sunucudaki eski config'de bulunmaz. `includes/varsayilanlar.php` bu sabitlere g�
 varsayılan vererek "undefined constant" ölümcül hatasını önler; ilgili özellik
 yapılandırılana kadar sessizce devre dışı kalır.
 
-Aynı şekilde uygulama, göç uygulanmadan da çalışır (`eposta_semasi_hazir_mi()`
-kontrolü): e-posta arayüzü gizlenir, sistemin geri kalanı normal çalışmaya devam eder.
+Aynı şekilde uygulama, göç uygulanmadan da çalışır. Üç ayrı hazırlık kontrolü var ve
+her biri ilgili özelliği sessizce devre dışı bırakıp sistemin geri kalanını ayakta
+tutar:
+
+| Kontrol | Göç | Uygulanmadığında |
+|---|---|---|
+| `eposta_semasi_hazir_mi()` | 001 | E-posta arayüzü ve şifre sıfırlama gizlenir |
+| `site_semasi_hazir_mi()` | 003 | Eski tek-site davranışına düşülür; site seçici ve blok arayüzü gizlenir |
+| `platform_semasi_hazir_mi()` | 004 | Yönetim paneli erişilemez; tanıtım sayfası koddaki varsayılan metinleri kullanır |
+
 Doğru sıra:
 
 1. Dosyaları dağıt (deploy)
 2. `goc.php` veya `araclar/goc_cli.php` ile göçleri uygula
 3. `config.php`'ye SMTP ayarlarını gir
+4. `php araclar/superadmin_ata.php <kullanici_adi>` ile ilk süper adminı ata
+5. O hesapla `/yonetim/iki_faktor.php` üzerinden 2FA'yı kur ve yedek kodları sakla
 
 ## E-posta Yapılandırması (SMTP)
 
