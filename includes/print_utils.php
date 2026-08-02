@@ -256,6 +256,106 @@ HTML;
 }
 
 /**
+ * Bilanço özet tablosu: açılış + gelirler + giderler = dönem sonu bakiye.
+ * Kalem sırası KMK m.33/m.39'un beklediği "hesap verme" mantığına
+ * uyar: önce ne vardı, ne girdi, ne çıktı, sonunda ne kaldı.
+ */
+function print_bilanco_ozet_table(array $ozet): string {
+    $satirlar = [
+        ['Açılış (Devir) Bakiyesi', $ozet['acilis_bakiye'], null],
+        ['Aidat Geliri', $ozet['aidat_geliri'], '+'],
+    ];
+    foreach ($ozet['diger_gelir_kirilimi'] as $tur => $tutar) {
+        if ((float)$tutar <= 0) continue;
+        $satirlar[] = [etiket(GELIR_TURLERI, $tur), (float)$tutar, '+'];
+    }
+    $satirlar[] = ['Toplam Gider', -$ozet['toplam_gider'], '-'];
+
+    $rows = '';
+    foreach ($satirlar as [$etiket, $tutar, $isaret]) {
+        $renk = $isaret === '+' ? 'text-success' : ($isaret === '-' ? 'text-danger' : '');
+        $rows .= sprintf(
+            '<tr><td>%s</td><td class="text-right %s"><strong>%s</strong></td></tr>',
+            e($etiket), $renk, para($tutar)
+        );
+    }
+
+    $bakiye_class = $ozet['donem_sonu_bakiye'] >= 0 ? 'text-success' : 'text-danger';
+    $bakiye_str   = para($ozet['donem_sonu_bakiye']);
+
+    return <<<HTML
+<table class="print-table" style="margin-bottom:15px">
+    <tbody>{$rows}</tbody>
+    <tfoot>
+        <tr class="total-row" style="background:#e8e8e8;border-top:2px solid #999">
+            <td><strong>DÖNEM SONU BAKİYE</strong></td>
+            <td class="text-right {$bakiye_class}" style="font-size:11pt"><strong>{$bakiye_str}</strong></td>
+        </tr>
+    </tfoot>
+</table>
+HTML;
+}
+
+/**
+ * Kategori kırılımlı gider tablosu (bilanço eki).
+ */
+function print_bilanco_gider_ozet(array $gider_kirilimi, float $toplam): string {
+    if (empty($gider_kirilimi)) {
+        return '<p class="empty-message">Bu yıl gider kaydı bulunmamaktadır.</p>';
+    }
+    $rows = '';
+    foreach ($gider_kirilimi as $gk) {
+        $pay = $toplam > 0 ? round($gk['toplam'] / $toplam * 100, 1) : 0;
+        $rows .= sprintf(
+            '<tr><td><span class="category-badge">%s</span></td>'
+          . '<td class="text-right text-danger"><strong>%s</strong></td>'
+          . '<td class="text-center">%%%s</td></tr>',
+            e_buyuk($gk['kategori']), para((float)$gk['toplam']), e(number_format($pay, 1, ',', '.'))
+        );
+    }
+    $toplam_str = para($toplam);
+    return <<<HTML
+<table class="print-table">
+    <thead><tr><th>Kategori</th><th class="text-right">Tutar</th><th class="text-center">Pay</th></tr></thead>
+    <tbody>{$rows}</tbody>
+    <tfoot><tr class="total-row"><td><strong>TOPLAM GİDER</strong></td>
+        <td class="text-right text-danger" colspan="2"><strong>{$toplam_str}</strong></td></tr></tfoot>
+</table>
+HTML;
+}
+
+/**
+ * Daire bazlı borç listesi (bilanço eki). "Alacak" (fazla ödeme)
+ * bu sistemde hesaplanmaz — aidatlar dönem başına tek tutar/durum
+ * tutar, kısmi/fazla ödeme kavramı yok.
+ */
+function print_bilanco_borc_table(array $borclu_daireler, float $toplam_borc): string {
+    if (empty($borclu_daireler)) {
+        return '<p class="empty-message">Borcu olan daire bulunmamaktadır.</p>';
+    }
+    $rows = '';
+    foreach ($borclu_daireler as $b) {
+        $rows .= sprintf(
+            '<tr><td class="text-center"><strong>#%s</strong></td><td>%s</td>'
+          . '<td class="text-center">%s ay</td>'
+          . '<td class="text-right text-danger"><strong>%s</strong></td></tr>',
+            e($b['daire_no']), $b['sakin_adi'] ? e_buyuk($b['sakin_adi']) : '—',
+            (int)$b['borclu_donem_sayisi'], para((float)$b['borc'])
+        );
+    }
+    $toplam_str = para($toplam_borc);
+    return <<<HTML
+<table class="print-table">
+    <thead><tr><th class="text-center">Daire</th><th>Sakin</th>
+        <th class="text-center">Borçlu Dönem</th><th class="text-right">Borç</th></tr></thead>
+    <tbody>{$rows}</tbody>
+    <tfoot><tr class="total-row"><td colspan="3"><strong>TOPLAM BORÇ</strong></td>
+        <td class="text-right text-danger"><strong>{$toplam_str}</strong></td></tr></tfoot>
+</table>
+HTML;
+}
+
+/**
  * Trend tablosu yazdırma HTML'i
  */
 function print_trend_table(array $trend): string {

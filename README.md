@@ -17,6 +17,9 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 - **Arıza / talep takibi**: kategori, öncelik ve durum akışıyla; fotoğraf eki, personel ataması, işlem geçmişi ve maliyetin gidere aktarılması
 - **Demirbaş ve bakım takibi**: asansör, yangın, jeneratör gibi ekipmanların künyesi; yasal periyodik kontroller için otomatik zincir ve e-posta hatırlatma
 - **Personel yönetimi**: görev, ücret ve ödeme geçmişi; her ödeme gider defterine otomatik işlenir
+- **Karar defteri / belge arşivi**: toplantı kararları (katılım oranı, oy dağılımı), belge yükleme, karar-belge bağlantısı — dijital yedek, yasal aslın yerine geçmez
+- **Aidat dışı gelirler**: kira, gecikme cezası, bağış, demirbaş satışı
+- **Resmi bilanço / yıl sonu kapanışı**: açılış bakiyesi, gelir-gider özeti, daire bazlı borç listesi, kategori kırılımı, önceki yılla karşılaştırma, A4 yazdırma, otomatik devir zinciriyle yıl kapatma
 - **Platform yönetim paneli** (`/yonetim/`): tüm siteler, kullanıcılar, denetim kaydı, sistem duyuruları, tanıtım sayfası içeriği ve bakım modu — zorunlu iki faktörlü doğrulama arkasında
 
 ## Klasör Yapısı
@@ -41,7 +44,12 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 ├─ talepler.php           → Arıza / talep bildirimi
 ├─ demirbaslar.php        → Demirbaş envanteri ve bakım takibi
 ├─ personel.php           → Personel ve ödeme yönetimi
-├─ belge_indir.php        → Dosya indirme bekçisi (yetki kontrollü)
+├─ belge_indir.php        → Dosya indirme bekçisi (yetki kontrollü, iki kaynak: ek/belge)
+├─ kararlar.php           → Karar defteri (dijital arşiv)
+├─ belgeler.php           → Belge arşivi (yönetim planı, sözleşme, poliçe, ruhsat...)
+├─ gelirler.php           → Aidat dışı gelirler (kira, gecikme cezası, bağış...)
+├─ bilanco.php            → Resmi bilanço / yıl sonu kapanış ekranı
+├─ print_bilanco.php      → Bilanço A4 yazdırma
 ├─ goc.php                → Şema göçü (web arayüzü, anahtarla korumalı)
 ├─ yonetim/               → Platform yönetim paneli (süper admin)
 │  ├─ ortak.php            → Panel önyükleme + yetki bekçisi
@@ -81,6 +89,8 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 │  ├─ operasyon.php        → Talep/bakım/personel ortak katmanı, gider bağlama, ekler
 │  ├─ demirbas_form.php    → Demirbaş form alanları (ekle + düzenle ortak)
 │  ├─ personel_form.php    → Personel form alanları (ekle + düzenle ortak)
+│  ├─ arsiv.php            → Karar/belge ortak katmanı (etiketler, karar no önerisi)
+│  ├─ mali_yil.php         → Bilanço hesaplama (yillik_ozet, yıl kapatma zinciri)
 │  └─ header.php / footer.php / print_utils.php
 └─ assets/                → CSS/JS dosyaları
    ├─ style.css            → Panel stilleri (mobil dahil)
@@ -513,6 +523,92 @@ kurulmaz.
 çalışır: üç modül menüde görünmez, doğrudan açılırsa bilgilendirme gösterir, gider
 ekranı eski davranışına döner.
 
+## Karar Defteri, Belge Arşivi ve Resmi Bilanço
+
+> Göç: `semalar/006_karar_belge_bilanco.sql`
+
+### ⚖️ Yasal kapsam — iki uyarı, arayüzde de kalıcı
+
+**Karar defteri:** Kat Mülkiyeti Kanunu'na göre karar defteri **noter tasdikli fiziksel
+defter** olarak tutulur. `kararlar.php` ve `belgeler.php` bu yasal aslın **yerine
+geçmez**; amacı dijital arşiv ve geçmiş kararlara hızlı erişimdir. Bu uyarı her iki
+sayfanın üstünde kapatılamaz bir bant olarak durur — bilinçli tasarım: bir kez
+kapatılıp unutulursa uyarının amacı kaybolur.
+
+**Resmi bilanço:** Bu rapor mali müşavir görüşü alınmadan tasarlandı. Kat Mülkiyeti
+Kanunu'nun yöneticiye yüklediği hesap verme yükümlülüğünü (m.33, m.39) karşılamayı
+**hedefler**; kesin format için bir mali müşavire teyit ettirilmesi önerilir. Aynı uyarı
+`bilanco.php` ekranında ve `print_bilanco.php` çıktısının imza alanının hemen üstünde
+de yer alır.
+
+### Karar defteri — `kararlar.php`
+
+- Karar no (`<yıl>/<sıra>` biçiminde otomatik önerilir, site içinde benzersizdir,
+  isteğe göre elle değiştirilebilir — mevcut fiziksel defterin numaralandırmasına
+  uymak isteyenler için)
+- Toplantı türü (olağan/olağanüstü genel kurul, yönetim kurulu, diğer), tarih, katılım
+  oranı, lehte/aleyhte/çekimser sayıları
+- Karara belge eklenebilir (toplantı tutanağı taraması, imza listesi vb.)
+- **Karar silinirse bağlı belgeler arşivde kalır** — yalnızca karar bağlantısı
+  (`belgeler.karar_id`) `NULL`'a döner (`ON DELETE SET NULL`). Bir toplantı tutanağı
+  taraması, kararın kendisi hatalı girilip silinse bile arşiv değeri taşımaya devam eder.
+- Yıla, toplantı türüne göre filtreleme; karar no/başlık/karar metninde arama
+
+### Belge arşivi — `belgeler.php`
+
+Karara bağlı olmayan belgeler (yönetim planı, sözleşme, sigorta poliçesi, ruhsat, bakım
+raporu) burada yönetilir. Aynı ekrandan yükleme sırasında isteğe bağlı olarak bir
+karara da bağlanabilir — `kararlar.php` ile `belgeler.php` aynı tabloyu (`belgeler`)
+paylaşır, yalnızca giriş noktaları farklıdır.
+
+Dosyalar `includes/dosya.php` üzerinden **web kökünün dışında** saklanır; indirme
+`belge_indir.php?kaynak=belge&id=` üzerinden yapılır. `belge_indir.php` Faz 4'ün `ekler`
+tablosuyla da çalışır (`kaynak=ek`, varsayılan — geriye dönük uyumluluk için parametre
+olmadan da çalışır); iki farklı tablo, tek bekçi betiğinden aktif siteye göre
+doğrulanarak sunulur.
+
+### Aidat dışı gelirler — `gelirler.php`
+
+Sistemde bugüne kadar tek gelir kaynağı aidattı. Kira (çatı/cephe/dükkân), gecikme
+cezası, bağış ve demirbaş satışı gibi gelirler kayda **giremiyordu** — bu, resmi
+bilanço raporunun önkoşuluydu. `giderler.php`'nin gelir yönündeki karşılığıdır; aynı
+desende (tür, açıklama, tutar, tarih → dönem, dekont no) tutulur.
+
+### Resmi bilanço / yıl sonu kapanışı — `bilanco.php`
+
+**Önce eksik veri modeli tamamlandı, sonra rapor yazıldı.** Bir bilanço "devreden
+bakiye + gelirler − giderler = dönem sonu bakiye" formülüne dayanır; açılış bakiyesi
+(`donem_acilis_bakiye`) ve aidat dışı gelirler (`gelirler`) olmadan bu formül eksik
+kalırdı — göç 006'nın asıl işi bu iki tabloyu eklemekti.
+
+**Rapor içeriği** (`includes/mali_yil.php` → `yillik_ozet()`):
+- Açılış bakiyesi + toplam gelir (aidat + diğer, tür kırılımlı) − toplam gider
+  (kategori kırılımlı) = dönem sonu bakiye
+- Daire bazlı borç listesi (ödenmemiş dönemlerin toplamı)
+- Tahsilat oranı
+- Önceki yılla gider karşılaştırması (yüzde fark)
+- A4'e optimize, imza alanlı çıktı (`print_bilanco.php`) — mevcut yazdırma altyapısı
+  (`includes/print_utils.php`) genişletilerek kullanıldı
+
+**"Alacak" (fazla ödeme) hesaplanmaz:** `aidatlar` tablosu dönem başına tek bir
+tutar/durum tutar; kısmi veya fazla ödeme kavramı sistemde yok. Borç listesi yalnızca
+ödenmemiş dönemlerin toplamıdır. Bu, mevcut veri modelinin bir sınırıdır ve rapor
+ekranında gizlenmez.
+
+**Yıl kapatma zinciri:** "`<yıl>` Yılını Kapat" düğmesi, o yılın dönem sonu bakiyesini
+otomatik olarak bir sonraki yılın açılış bakiyesi yapar. Devir bakiyesini elle taşımak
+hataya açıktır (aynı rakamın iki yerde farklı girilmesi gibi); bu düğme zinciri kurar.
+**Sonraki yılın açılışı zaten elle girilmişse üzerine YAZILMAZ** — düğme arayüzde
+devre dışı bırakılır ve nedeni açıklanır; kapanış işlemi geri alınabilir olmalı ve elle
+yapılmış bir düzeltmeyi sessizce ezmemelidir. Üzerine yazmak isteniyorsa hedef yıl
+seçilip açılış bakiyesi doğrudan güncellenebilir.
+
+### Göç uygulanmadan önce
+
+`arsiv_semasi_hazir_mi()` ve `bilanco_semasi_hazir_mi()` kontrolleri sayesinde
+uygulama göç 006 uygulanmadan da çalışır: dört modül (kararlar, belgeler, gelirler,
+bilanço) menüde görünmez, doğrudan açılırsa bilgilendirme gösterir.
+
 ## Güvenlik Notları
 
 - Tüm veritabanı sorguları PDO prepared statement kullanır; ham SQL birleştirmesi yoktur.
@@ -527,7 +623,8 @@ ekranı eski davranışına döner.
 - Kullanıcıya ait olmayan bir kayda id ile doğrudan erişim denemesi (`daire_detay.php?id=…`, `daire_print.php?id=…`) sorgu düzeyinde `site_id` filtresine takılır; yetkisiz istek veri döndürmez.
 - Platform yönetim paneli (`/yonetim/`) ayrı bir giriş yolu, zorunlu TOTP, iki eksenli hız sınırlama ve isteğe bağlı IP kısıtı ile korunur; her panel işlemi denetim kaydına yazılır — bkz. "Platform Yönetimi".
 - Yüklenen dosyalar web kökünün dışında saklanır ve yalnızca `belge_indir.php` üzerinden, aktif site doğrulandıktan sonra sunulur; gerçek MIME kontrolü uzantıya güvenmez — bkz. "Operasyonel Modüller".
-- Formdan gelen yabancı anahtarlar (daire, personel, blok) ait oldukları siteye karşı doğrulanır; başka bir apartmanın kaydına referans verilemez.
+- Formdan gelen yabancı anahtarlar (daire, personel, blok, karar) ait oldukları siteye karşı doğrulanır; başka bir apartmanın kaydına referans verilemez.
+- Karar defteri ve resmi bilanço ekranlarında, bu modüllerin yasal aslın/mali müşavir onayının yerine geçmediğini hatırlatan kapatılamaz bir uyarı bandı bulunur — bkz. "Karar Defteri, Belge Arşivi ve Resmi Bilanço".
 
 **Bilinen sınırlamalar / öneriler:**
 - Uygulama giriş formunda (`login.php`) kaba kuvvet koruması yok; hız sınırlama şimdilik yalnızca şifre sıfırlama ve yönetim panelinde uygulanıyor.
@@ -578,6 +675,8 @@ tutar:
 | `site_semasi_hazir_mi()` | 003 | Eski tek-site davranışına düşülür; site seçici ve blok arayüzü gizlenir |
 | `platform_semasi_hazir_mi()` | 004 | Yönetim paneli erişilemez; tanıtım sayfası koddaki varsayılan metinleri kullanır |
 | `operasyon_semasi_hazir_mi()` | 005 | Talep/demirbaş/personel modülleri menüde görünmez; gider ekranı eski davranışına döner |
+| `arsiv_semasi_hazir_mi()` | 006 | Karar defteri ve belge arşivi menüde görünmez |
+| `bilanco_semasi_hazir_mi()` | 006 | Gelirler ve bilanço menüde görünmez |
 
 Doğru sıra:
 

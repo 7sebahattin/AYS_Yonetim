@@ -14,13 +14,21 @@ $menu = [
   ['dosya'=>'giderler.php',  'etiket'=>'Giderler',  'ikon'=>'📋'],
 ];
 
-// Daha paneli — operasyonel modüller yalnızca göç 005 uygulandıysa
-// gösterilir; aksi halde tıklandığında boş bir uyarı sayfası çıkardı.
+// Daha paneli — göç uygulanmamış modüller gösterilmez; aksi halde
+// tıklandığında boş bir uyarı sayfası çıkardı.
 $more_pages = [['dosya'=>'raporlar.php', 'etiket'=>'Raporlar', 'ikon'=>'📊']];
 if (operasyon_semasi_hazir_mi()) {
   $more_pages[] = ['dosya'=>'talepler.php',   'etiket'=>'Talepler',  'ikon'=>'🛠'];
   $more_pages[] = ['dosya'=>'demirbaslar.php','etiket'=>'Demirbaş',  'ikon'=>'🏗'];
   $more_pages[] = ['dosya'=>'personel.php',   'etiket'=>'Personel',  'ikon'=>'👷'];
+}
+if (arsiv_semasi_hazir_mi()) {
+  $more_pages[] = ['dosya'=>'kararlar.php', 'etiket'=>'Kararlar', 'ikon'=>'📜'];
+  $more_pages[] = ['dosya'=>'belgeler.php', 'etiket'=>'Belgeler', 'ikon'=>'📁'];
+}
+if (bilanco_semasi_hazir_mi()) {
+  $more_pages[] = ['dosya'=>'gelirler.php', 'etiket'=>'Gelirler', 'ikon'=>'💵'];
+  $more_pages[] = ['dosya'=>'bilanco.php',  'etiket'=>'Bilanço',  'ikon'=>'📈'];
 }
 $more_pages[] = ['dosya'=>'ayarlar.php', 'etiket'=>'Ayarlar', 'ikon'=>'⚙️'];
 $more_pages[] = ['dosya'=>'cikis.php',   'etiket'=>'Çıkış',   'ikon'=>'🚪'];
@@ -74,12 +82,20 @@ $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
   </a>
   <nav class="sidebar-nav">
     <?php
-    // Kenar çubuğunda ana menü + raporlar + (varsa) operasyonel modüller
+    // Kenar çubuğunda ana menü + raporlar + (varsa) göç uygulanmış modüller
     $yan_menu = array_merge($menu, [['dosya'=>'raporlar.php','etiket'=>'Raporlar','ikon'=>'📊']]);
     if (operasyon_semasi_hazir_mi()) {
       $yan_menu[] = ['dosya'=>'talepler.php',    'etiket'=>'Talepler', 'ikon'=>'🛠'];
       $yan_menu[] = ['dosya'=>'demirbaslar.php', 'etiket'=>'Demirbaş', 'ikon'=>'🏗'];
       $yan_menu[] = ['dosya'=>'personel.php',    'etiket'=>'Personel', 'ikon'=>'👷'];
+    }
+    if (arsiv_semasi_hazir_mi()) {
+      $yan_menu[] = ['dosya'=>'kararlar.php', 'etiket'=>'Kararlar', 'ikon'=>'📜'];
+      $yan_menu[] = ['dosya'=>'belgeler.php', 'etiket'=>'Belgeler', 'ikon'=>'📁'];
+    }
+    if (bilanco_semasi_hazir_mi()) {
+      $yan_menu[] = ['dosya'=>'gelirler.php', 'etiket'=>'Gelirler', 'ikon'=>'💵'];
+      $yan_menu[] = ['dosya'=>'bilanco.php',  'etiket'=>'Bilanço',  'ikon'=>'📈'];
     }
     foreach ($yan_menu as $m): ?>
     <a href="/<?= $m['dosya'] ?>" class="nav-item <?= $aktif_sayfa === $m['dosya'] ? 'active' : '' ?>">

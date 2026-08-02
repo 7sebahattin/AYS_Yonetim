@@ -12,6 +12,8 @@ require_once __DIR__ . '/denetim.php';
 require_once __DIR__ . '/hiz_limiti.php';
 require_once __DIR__ . '/platform.php';
 require_once __DIR__ . '/operasyon.php';
+require_once __DIR__ . '/arsiv.php';
+require_once __DIR__ . '/mali_yil.php';
 
 // ─── Şema hazırlık kontrolü ─────────────────────────────────
 // Dosyalar sunucuya kopyalandıktan sonra göç (migration) elle
