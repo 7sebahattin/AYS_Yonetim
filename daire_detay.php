@@ -14,8 +14,8 @@ $daire_id = (int)($_GET['id'] ?? 0);
 if (!$daire_id) { header('Location: /daireler.php'); exit; }
 
 // Daire bu kullanıcıya ait mi?
-$stmt = $db->prepare("SELECT * FROM daireler WHERE id=? AND kullanici_id=?");
-$stmt->execute([$daire_id, $kullanici['id']]);
+$stmt = $db->prepare("SELECT * FROM daireler WHERE id=? AND site_id=?");
+$stmt->execute([$daire_id, $kullanici['site_id']]);
 $daire = $stmt->fetch();
 if (!$daire) { header('Location: /daireler.php'); exit; }
 
@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $ins = $db->prepare("INSERT INTO aidatlar
-                (kullanici_id, daire_id, donem, tutar, durum, odeme_tarihi, dekont_no, notlar)
+                (site_id, daire_id, donem, tutar, durum, odeme_tarihi, dekont_no, notlar)
                 VALUES (?,?,?,?,'odendi',?,?,?)
                 ON DUPLICATE KEY UPDATE
                     durum='odendi', tutar=VALUES(tutar),
@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $say = 0;
             foreach ($donemler as $d) {
                 $tutar = $tutar_tipi === 'sabit' ? $sabit_tutar : (float)$daire['aylik_aidat'];
-                $ins->execute([$kullanici['id'], $daire_id, $d, $tutar, $odeme_tarihi, $dekont_no, $notlar]);
+                $ins->execute([$kullanici['site_id'], $daire_id, $d, $tutar, $odeme_tarihi, $dekont_no, $notlar]);
                 $say++;
             }
             flash("$say dönem için ödeme kaydedildi.");
@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ── Tek dönem ödeme sil ──────────────────────────────────
     if ($islem === 'sil') {
         $aidat_id = (int)$_POST['aidat_id'];
-        $db->prepare("DELETE FROM aidatlar WHERE id=? AND kullanici_id=?")->execute([$aidat_id, $kullanici['id']]);
+        $db->prepare("DELETE FROM aidatlar WHERE id=? AND site_id=?")->execute([$aidat_id, $kullanici['site_id']]);
         flash('Kayıt silindi.');
     }
 
@@ -79,8 +79,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $yeni_durum = $_POST['yeni_durum'] ?? 'bekliyor';
         if (in_array($yeni_durum, ['odendi','bekliyor','gecikme'])) {
             $tarih = $yeni_durum === 'odendi' ? date('Y-m-d') : null;
-            $db->prepare("UPDATE aidatlar SET durum=?, odeme_tarihi=? WHERE id=? AND kullanici_id=?")
-               ->execute([$yeni_durum, $tarih, $aidat_id, $kullanici['id']]);
+            $db->prepare("UPDATE aidatlar SET durum=?, odeme_tarihi=? WHERE id=? AND site_id=?")
+               ->execute([$yeni_durum, $tarih, $aidat_id, $kullanici['site_id']]);
             flash('Durum güncellendi.');
         }
     }
@@ -92,10 +92,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // ─── TÜM DÖNEM GEÇMİŞİ ───────────────────────────────────────
 $stmt = $db->prepare("
     SELECT * FROM aidatlar
-    WHERE daire_id = ? AND kullanici_id = ?
+    WHERE daire_id = ? AND site_id = ?
     ORDER BY donem DESC
 ");
-$stmt->execute([$daire_id, $kullanici['id']]);
+$stmt->execute([$daire_id, $kullanici['site_id']]);
 $tum_aidatlar = $stmt->fetchAll();
 
 // ─── İSTATİSTİK ───────────────────────────────────────────────

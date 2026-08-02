@@ -179,13 +179,135 @@ function giris_kontrol(): array {
     }
 
     $_SESSION['son_islem'] = time();
+    $kullanici_id = (int)$_SESSION['kullanici_id'];
+
+    // Site modeli göçü uygulanmadıysa eski (tek site) davranışına düş.
+    if (!site_semasi_hazir_mi()) {
+        return [
+            'id'            => $kullanici_id,
+            'kullanici_adi' => $_SESSION['kullanici_adi'],
+            'apartman_adi'  => $_SESSION['apartman_adi'],
+            'site_id'       => $kullanici_id, // göç öncesi site_id = kullanici_id
+            'site_adi'      => $_SESSION['apartman_adi'],
+            'rol'           => 'yonetici',
+            'site_sayisi'   => 1,
+            'toplam_daire'  => (int)$_SESSION['toplam_daire'],
+            'tema'          => $_SESSION['tema'] ?? 'koyu',
+        ];
+    }
+
+    $site = aktif_site_belirle($kullanici_id);
+    if ($site === null) {
+        // Kullanıcının yetkili olduğu hiçbir site yok — veri tutarsızlığı.
+        http_response_code(500);
+        error_log("Kullanıcı #$kullanici_id için aktif site bulunamadı.");
+        die('<div style="font-family:sans-serif;padding:40px">'
+          . '<h2>Hesabınıza tanımlı bir apartman/site bulunamadı</h2>'
+          . '<p>Lütfen yönetici ile iletişime geçin.</p>'
+          . '<p><a href="/cikis.php">Çıkış yap</a></p></div>');
+    }
+
     return [
-        'id'            => (int)$_SESSION['kullanici_id'],
+        'id'            => $kullanici_id,
         'kullanici_adi' => $_SESSION['kullanici_adi'],
-        'apartman_adi'  => $_SESSION['apartman_adi'],
-        'toplam_daire'  => (int)$_SESSION['toplam_daire'],
-        'tema'          => $_SESSION['tema'] ?? 'koyu', // YENİ EKLENEN SATIR
+        // 'apartman_adi' anahtarı geriye dönük uyumluluk için korunuyor:
+        // header, yazdırma şablonları ve WhatsApp metni bunu kullanıyor.
+        'apartman_adi'  => $site['ad'],
+        'site_id'       => (int)$site['id'],
+        'site_adi'      => $site['ad'],
+        'site_tipi'     => $site['tip'],
+        'rol'           => $site['rol'],
+        'site_sayisi'   => (int)$site['site_sayisi'],
+        'toplam_daire'  => (int)$site['toplam_daire'],
+        'tema'          => $_SESSION['tema'] ?? 'koyu',
     ];
+}
+
+// ─── Site (çoklu apartman) desteği ──────────────────────────
+// Göç 003 uygulanmadan da sistem çalışsın diye şema kontrolü.
+function site_semasi_hazir_mi(): bool {
+    static $hazir = null;
+    if ($hazir !== null) return $hazir;
+    try {
+        db()->query("SELECT id FROM siteler LIMIT 0");
+        $hazir = true;
+    } catch (Throwable $ex) {
+        $hazir = false;
+    }
+    return $hazir;
+}
+
+// Aktif siteyi belirler ve DOĞRULAR.
+//
+// GÜVENLİK — sistemdeki en kritik kontrol: Aktif site yalnızca
+// kullanici_site_yetkileri tablosunda eşleşen bir satır varsa kabul
+// edilir. Bu doğrulama olmadan, oturumdaki site_id değiştirilerek
+// başka bir apartmanın tüm mali verisine erişilebilirdi.
+function aktif_site_belirle(int $kullanici_id): ?array {
+    $istenen = (int)($_SESSION['aktif_site_id'] ?? 0);
+
+    $sorgu = "
+        SELECT s.id, s.ad, s.tip, s.toplam_daire, y.rol,
+               (SELECT COUNT(*) FROM kullanici_site_yetkileri y2
+                 WHERE y2.kullanici_id = ? AND y2.durum = 'aktif') AS site_sayisi
+        FROM kullanici_site_yetkileri y
+        JOIN siteler s ON s.id = y.site_id
+        WHERE y.kullanici_id = ? AND y.durum = 'aktif' AND s.durum = 'aktif'
+    ";
+
+    if ($istenen > 0) {
+        $st = db()->prepare($sorgu . " AND y.site_id = ?");
+        $st->execute([$kullanici_id, $kullanici_id, $istenen]);
+        if ($kayit = $st->fetch()) {
+            $_SESSION['aktif_site_id'] = (int)$kayit['id'];
+            return $kayit;
+        }
+        // İstenen site artık erişilebilir değil → varsayılana düş
+    }
+
+    $st = db()->prepare($sorgu . " ORDER BY s.ad LIMIT 1");
+    $st->execute([$kullanici_id, $kullanici_id]);
+    if ($kayit = $st->fetch()) {
+        $_SESSION['aktif_site_id'] = (int)$kayit['id'];
+        return $kayit;
+    }
+    return null;
+}
+
+// Kullanıcının yetkili olduğu tüm siteler (site seçici için).
+function kullanici_siteleri(int $kullanici_id): array {
+    if (!site_semasi_hazir_mi()) return [];
+    $st = db()->prepare("
+        SELECT s.id, s.ad, s.tip, y.rol
+        FROM kullanici_site_yetkileri y
+        JOIN siteler s ON s.id = y.site_id
+        WHERE y.kullanici_id = ? AND y.durum = 'aktif' AND s.durum = 'aktif'
+        ORDER BY s.ad
+    ");
+    $st->execute([$kullanici_id]);
+    return $st->fetchAll();
+}
+
+// Bir sitenin blokları.
+function site_bloklari(int $site_id): array {
+    if (!site_semasi_hazir_mi()) return [];
+    $st = db()->prepare("SELECT id, ad, sira FROM bloklar WHERE site_id = ? ORDER BY sira, ad");
+    $st->execute([$site_id]);
+    return $st->fetchAll();
+}
+
+// Formdan gelen blok id'sini DOĞRULAR: yalnızca verilen siteye ait bir
+// blok kabul edilir. Bu kontrol olmadan kullanıcı, formu değiştirerek
+// dairesini başka bir apartmanın bloğuna bağlayabilirdi.
+// Geçersiz/boş değerde null döner (daire bloksuz kalır, hata vermez).
+function gecerli_blok_id(int $site_id, mixed $istenen): ?int {
+    if (!site_semasi_hazir_mi()) return null;
+    $istenen = (int)$istenen;
+    if ($istenen <= 0) return null;
+
+    $st = db()->prepare("SELECT id FROM bloklar WHERE id = ? AND site_id = ?");
+    $st->execute([$istenen, $site_id]);
+    return $st->fetch() ? $istenen : null;
 }
 
 // ─── Para Formatı ────────────────────────────────────────────
@@ -289,12 +411,12 @@ function flash_goster(): string {
 }
 
 // ─── Dashboard İstatistikleri ─────────────────────────────────
-function istatistikler(int $kullanici_id, string $donem): array {
+function istatistikler(int $site_id, string $donem): array {
     $db = db();
 
     // Daire sayısı
-    $stmt = $db->prepare("SELECT COUNT(*) FROM daireler WHERE kullanici_id = ?");
-    $stmt->execute([$kullanici_id]);
+    $stmt = $db->prepare("SELECT COUNT(*) FROM daireler WHERE site_id = ?");
+    $stmt->execute([$site_id]);
     $toplam_daire = (int)$stmt->fetchColumn();
 
     // Bu dönem aidatlar
@@ -305,14 +427,14 @@ function istatistikler(int $kullanici_id, string $donem): array {
             COUNT(CASE WHEN durum='odendi' THEN 1 END) AS odenen_daire,
             COUNT(CASE WHEN durum<>'odendi' THEN 1 END) AS bekleyen_daire
         FROM aidatlar
-        WHERE kullanici_id = ? AND donem = ?
+        WHERE site_id = ? AND donem = ?
     ");
-    $stmt->execute([$kullanici_id, $donem]);
+    $stmt->execute([$site_id, $donem]);
     $aidat = $stmt->fetch();
 
     // Bu dönem giderler
-    $stmt = $db->prepare("SELECT COALESCE(SUM(tutar),0) FROM giderler WHERE kullanici_id = ? AND donem = ?");
-    $stmt->execute([$kullanici_id, $donem]);
+    $stmt = $db->prepare("SELECT COALESCE(SUM(tutar),0) FROM giderler WHERE site_id = ? AND donem = ?");
+    $stmt->execute([$site_id, $donem]);
     $gider = (float)$stmt->fetchColumn();
 
     $tahsilat = (float)($aidat['tahsilat'] ?? 0);
@@ -351,17 +473,17 @@ function gider_kategorileri_tablosunu_hazirla(): void {
 // Bir kullanıcı için gider kategori önerileri: varsayılan liste +
 // kullanıcının daha önce eklediği özel kategoriler + geçmişte
 // giderler.kategori'de fiilen kullanılmış değerler (tekilleştirilmiş).
-function gider_kategori_onerileri(int $kullanici_id): array {
+function gider_kategori_onerileri(int $site_id): array {
     $varsayilan = ['TEMİZLİK', 'ELEKTRİK', 'SU', 'DOĞALGAZ', 'ASANSÖR',
                    'BAHÇE', 'GÜVENLİK', 'TAMİRAT', 'YÖNETİM', 'SİGORTA', 'DİĞER'];
 
     $db = db();
-    $ozel = $db->prepare("SELECT ad FROM gider_kategorileri WHERE kullanici_id=? ORDER BY ad");
-    $ozel->execute([$kullanici_id]);
+    $ozel = $db->prepare("SELECT ad FROM gider_kategorileri WHERE site_id=? ORDER BY ad");
+    $ozel->execute([$site_id]);
     $ozel = $ozel->fetchAll(PDO::FETCH_COLUMN);
 
-    $gecmis = $db->prepare("SELECT DISTINCT kategori FROM giderler WHERE kullanici_id=? AND kategori<>''");
-    $gecmis->execute([$kullanici_id]);
+    $gecmis = $db->prepare("SELECT DISTINCT kategori FROM giderler WHERE site_id=? AND kategori<>''");
+    $gecmis->execute([$site_id]);
     $gecmis = $gecmis->fetchAll(PDO::FETCH_COLUMN);
 
     // Eski (bu özellikten önce) küçük/karışık harfle kaydedilmiş kategoriler
@@ -380,35 +502,35 @@ function gider_kategori_onerileri(int $kullanici_id): array {
 // Yeni bir gider eklenirken kullanıcının özel kategori listesine kaydeder
 // (varsayılan listedeki isimler için de zararsızdır — yalnızca kişisel
 // öneri havuzunu büyütür, tekrar eklemede sessizce yok sayılır).
-function gider_kategori_kaydet(int $kullanici_id, string $ad): void {
+function gider_kategori_kaydet(int $site_id, string $ad): void {
     $ad = trim($ad);
     if ($ad === '') return;
-    db()->prepare("INSERT IGNORE INTO gider_kategorileri (kullanici_id, ad) VALUES (?, ?)")
-        ->execute([$kullanici_id, $ad]);
+    db()->prepare("INSERT IGNORE INTO gider_kategorileri (site_id, ad) VALUES (?, ?)")
+        ->execute([$site_id, $ad]);
 }
 
 // ─── Gelir/Gider Trendi (dönem aralığı, en yeniden en eskiye) ─
-function trend_verisi(int $kullanici_id, string $baslangic, string $bitis): array {
+function trend_verisi(int $site_id, string $baslangic, string $bitis): array {
     $db = db();
 
     // Dönem başına tahsilat toplamı — tek GROUP BY sorgusu
     $stmt = $db->prepare("
         SELECT donem, SUM(tutar) AS toplam
         FROM aidatlar
-        WHERE kullanici_id = ? AND durum = 'odendi' AND donem BETWEEN ? AND ?
+        WHERE site_id = ? AND durum = 'odendi' AND donem BETWEEN ? AND ?
         GROUP BY donem
     ");
-    $stmt->execute([$kullanici_id, $baslangic, $bitis]);
+    $stmt->execute([$site_id, $baslangic, $bitis]);
     $tahsilatlar = array_column($stmt->fetchAll(), 'toplam', 'donem');
 
     // Dönem başına gider toplamı — tek GROUP BY sorgusu
     $stmt = $db->prepare("
         SELECT donem, SUM(tutar) AS toplam
         FROM giderler
-        WHERE kullanici_id = ? AND donem BETWEEN ? AND ?
+        WHERE site_id = ? AND donem BETWEEN ? AND ?
         GROUP BY donem
     ");
-    $stmt->execute([$kullanici_id, $baslangic, $bitis]);
+    $stmt->execute([$site_id, $baslangic, $bitis]);
     $giderler = array_column($stmt->fetchAll(), 'toplam', 'donem');
 
     $trend = [];

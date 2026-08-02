@@ -129,14 +129,36 @@ $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
 <div class="main-wrap">
   <header class="top-bar">
     <h1 class="page-title"><?= e($sayfa_basligi ?? '') ?></h1>
-    <form method="get" style="display:flex;align-items:center;gap:8px">
-      <label style="font-size:13px;font-weight:700;color:var(--accent);">Dönem Seç:</label>
-      <select name="donem" class="input input-sm donem-highlight" style="width:auto" onchange="this.form.submit()">
-        <?php foreach (donem_listesi_genisletilmis() as $d): ?>
-        <option value="<?= e($d) ?>" <?= $d === $aktif_donem ? 'selected' : '' ?>><?= e(donem_adi($d)) ?></option>
-        <?php endforeach; ?>
-      </select>
-    </form>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <?php
+      // Site seçici yalnızca birden fazla siteye yetkili kullanıcıya
+      // gösterilir — tek siteli kullanıcı için arayüz hiç değişmez.
+      $kullanici_site_listesi = ($kullanici['site_sayisi'] ?? 1) > 1
+          ? kullanici_siteleri($kullanici['id']) : [];
+      if ($kullanici_site_listesi):
+      ?>
+      <form method="post" action="/site_sec.php" style="display:flex;align-items:center;gap:8px">
+        <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+        <input type="hidden" name="geri" value="/<?= e($aktif_sayfa) ?>">
+        <label style="font-size:13px;font-weight:700;color:var(--mint)">Site:</label>
+        <select name="site_id" class="input input-sm" style="width:auto;max-width:190px" onchange="this.form.submit()">
+          <?php foreach ($kullanici_site_listesi as $s): ?>
+          <option value="<?= (int)$s['id'] ?>" <?= (int)$s['id'] === (int)$kullanici['site_id'] ? 'selected' : '' ?>>
+            <?= e_buyuk($s['ad']) ?>
+          </option>
+          <?php endforeach; ?>
+        </select>
+      </form>
+      <?php endif; ?>
+      <form method="get" style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:13px;font-weight:700;color:var(--accent);">Dönem Seç:</label>
+        <select name="donem" class="input input-sm donem-highlight" style="width:auto" onchange="this.form.submit()">
+          <?php foreach (donem_listesi_genisletilmis() as $d): ?>
+          <option value="<?= e($d) ?>" <?= $d === $aktif_donem ? 'selected' : '' ?>><?= e(donem_adi($d)) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </form>
+    </div>
   </header>
 
   <div class="page-content">

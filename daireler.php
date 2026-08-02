@@ -24,11 +24,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $kat         = $_POST['kat'] !== '' ? (int)$_POST['kat'] : null;
         $notlar      = buyuk($_POST['notlar'] ?? '');
 
-        $stmt = $db->prepare("SELECT id FROM daireler WHERE id=? AND kullanici_id=?");
-        $stmt->execute([$id, $kullanici['id']]);
+        $blok_id = gecerli_blok_id($kullanici['site_id'], $_POST['blok_id'] ?? null);
+
+        $stmt = $db->prepare("SELECT id FROM daireler WHERE id=? AND site_id=?");
+        $stmt->execute([$id, $kullanici['site_id']]);
         if ($stmt->fetch()) {
-            $db->prepare("UPDATE daireler SET sakin_adi=?, telefon=?, eposta=?, aylik_aidat=?, kat=?, notlar=? WHERE id=?")
-               ->execute([$sakin_adi, $telefon, $eposta, $aylik_aidat, $kat, $notlar, $id]);
+            $db->prepare("UPDATE daireler SET sakin_adi=?, telefon=?, eposta=?, aylik_aidat=?, kat=?, notlar=?, blok_id=? WHERE id=?")
+               ->execute([$sakin_adi, $telefon, $eposta, $aylik_aidat, $kat, $notlar, $blok_id, $id]);
             flash('Daire bilgileri kaydedildi.');
         }
     }
@@ -37,15 +39,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($islem === 'ekle') {
         $daire_no    = (int)$_POST['daire_no'];
         $aylik_aidat = max(0, (float)str_replace(',', '.', $_POST['aylik_aidat'] ?? 500));
+        $blok_id     = gecerli_blok_id($kullanici['site_id'], $_POST['blok_id'] ?? null);
 
-        $stmt = $db->prepare("SELECT id FROM daireler WHERE kullanici_id=? AND daire_no=?");
-        $stmt->execute([$kullanici['id'], $daire_no]);
+        $stmt = $db->prepare("SELECT id FROM daireler WHERE site_id=? AND daire_no=?");
+        $stmt->execute([$kullanici['site_id'], $daire_no]);
         if ($stmt->fetch()) {
             flash("Daire #$daire_no zaten mevcut.", 'hata');
         } else {
-            $db->prepare("INSERT INTO daireler (kullanici_id, daire_no, sakin_adi, telefon, eposta, aylik_aidat, notlar)
-                          VALUES (?, ?, ?, ?, ?, ?, ?)")
-               ->execute([$kullanici['id'], $daire_no, buyuk($_POST['sakin_adi'] ?? ''), trim($_POST['telefon'] ?? ''), trim($_POST['eposta'] ?? ''), $aylik_aidat, buyuk($_POST['notlar'] ?? '')]);
+            $db->prepare("INSERT INTO daireler (site_id, blok_id, daire_no, kat, sakin_adi, telefon, eposta, aylik_aidat, notlar)
+                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+               ->execute([$kullanici['site_id'], $blok_id, $daire_no,
+                          ($_POST['kat'] ?? '') !== '' ? (int)$_POST['kat'] : null,
+                          buyuk($_POST['sakin_adi'] ?? ''), trim($_POST['telefon'] ?? ''),
+                          trim($_POST['eposta'] ?? ''), $aylik_aidat, buyuk($_POST['notlar'] ?? '')]);
             flash("Daire #$daire_no eklendi.");
         }
     }
@@ -53,8 +59,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ── Daire Sil ────────────────────────────────────────────
     if ($islem === 'sil') {
         $id = (int)$_POST['id'];
-        $stmt = $db->prepare("DELETE FROM daireler WHERE id=? AND kullanici_id=?");
-        $stmt->execute([$id, $kullanici['id']]);
+        $stmt = $db->prepare("DELETE FROM daireler WHERE id=? AND site_id=?");
+        $stmt->execute([$id, $kullanici['site_id']]);
         flash('Daire silindi.');
     }
 
@@ -70,18 +76,24 @@ $stmt = $db->prepare("
            a.tutar AS odenen_tutar
     FROM daireler d
     LEFT JOIN aidatlar a ON a.daire_id = d.id AND a.donem = ?
-    WHERE d.kullanici_id = ?
+    WHERE d.site_id = ?
     ORDER BY d.daire_no
 ");
-$stmt->execute([$donem, $kullanici['id']]);
+$stmt->execute([$donem, $kullanici['site_id']]);
 $daireler = $stmt->fetchAll();
+
+$bloklar = site_bloklari($kullanici['site_id']);
+// Blok sütunu yalnızca birden fazla blok tanımlıysa gösterilir; tek
+// bloklu apartmanlarda arayüz gereksiz yere kalabalıklaşmasın.
+$blok_goster = count($bloklar) > 1;
+$blok_adlari = array_column($bloklar, 'ad', 'id');
 
 // Düzenleme modu
 $duzenle_id = (int)($_GET['duzenle'] ?? 0);
 $duzenle = null;
 if ($duzenle_id) {
-    $stmt = $db->prepare("SELECT * FROM daireler WHERE id=? AND kullanici_id=?");
-    $stmt->execute([$duzenle_id, $kullanici['id']]);
+    $stmt = $db->prepare("SELECT * FROM daireler WHERE id=? AND site_id=?");
+    $stmt->execute([$duzenle_id, $kullanici['site_id']]);
     $duzenle = $stmt->fetch();
 }
 
@@ -100,7 +112,8 @@ include 'includes/header.php';
   <table class="table">
     <thead>
       <tr>
-        <th>No</th><th>Kat</th><th>Sakin</th><th>Telefon</th>
+        <th>No</th><?php if ($blok_goster): ?><th>Blok</th><?php endif; ?>
+        <th>Kat</th><th>Sakin</th><th>Telefon</th>
         <th>E-posta</th><th>Aidat</th><th>Durum</th><th>İşlem</th>
       </tr>
     </thead>
@@ -108,6 +121,9 @@ include 'includes/header.php';
     <?php foreach ($daireler as $d): ?>
       <tr style="cursor:pointer" onclick="window.location='/daire_detay.php?id=<?= $d['id'] ?>'">
         <td><strong class="daire-badge">#<?= e($d['daire_no']) ?></strong></td>
+        <?php if ($blok_goster): ?>
+        <td><?= isset($blok_adlari[$d['blok_id']]) ? e_buyuk($blok_adlari[$d['blok_id']]) : '—' ?></td>
+        <?php endif; ?>
         <td><?= $d['kat'] !== null ? e($d['kat'].'. Kat') : '—' ?></td>
         <td><?= $d['sakin_adi'] ? e_buyuk($d['sakin_adi']) : '<em class="muted">Boş</em>' ?></td>
         <td><?= e($d['telefon'] ?: '—') ?></td>
@@ -158,6 +174,19 @@ include 'includes/header.php';
           <label>Kat</label>
           <input type="number" name="kat" class="input" value="<?= e($duzenle['kat']) ?>" placeholder="1">
         </div>
+        <?php if ($bloklar): ?>
+        <div class="form-group">
+          <label>Blok</label>
+          <select name="blok_id" class="input">
+            <option value="">— Blok seçilmedi —</option>
+            <?php foreach ($bloklar as $b): ?>
+            <option value="<?= (int)$b['id'] ?>" <?= (int)$b['id'] === (int)$duzenle['blok_id'] ? 'selected' : '' ?>>
+              <?= e_buyuk($b['ad']) ?>
+            </option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <?php endif; ?>
         <div class="form-group">
           <label>Telefon</label>
           <input type="text" name="telefon" class="input" value="<?= e($duzenle['telefon']) ?>" placeholder="0555 000 00 00">
@@ -202,6 +231,16 @@ include 'includes/header.php';
           <label>Kat</label>
           <input type="number" name="kat" class="input" placeholder="1">
         </div>
+        <?php if ($bloklar): ?>
+        <div class="form-group">
+          <label>Blok</label>
+          <select name="blok_id" class="input">
+            <?php foreach ($bloklar as $b): ?>
+            <option value="<?= (int)$b['id'] ?>"><?= e_buyuk($b['ad']) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <?php endif; ?>
         <div class="form-group">
           <label>Sakin Adı</label>
           <input type="text" name="sakin_adi" class="input buyuk" placeholder="Ad Soyad">

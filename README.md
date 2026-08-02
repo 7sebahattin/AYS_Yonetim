@@ -5,7 +5,8 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 ## Özellikler
 
 - Kullanıcı bazlı apartman hesabı (kayıt olduğunuzda kendi apartmanınız ve daireleriniz otomatik oluşturulur)
-- Daire yönetimi (ekle/düzenle/sil, sakin bilgisi, aylık aidat tutarı)
+- **Çoklu site / çoklu blok**: bir kullanıcı birden fazla apartman veya site yönetebilir, aralarında tek tıkla geçiş yapar; her site bloklara (A Blok, B Blok…) ayrılabilir
+- Daire yönetimi (ekle/düzenle/sil, blok ataması, sakin bilgisi, aylık aidat tutarı)
 - Dönem bazlı aidat/ödeme takibi, toplu dönem oluşturma, toplu/tekil ödeme girişi
 - WhatsApp üzerinden sakine borç/ödeme durumu mesajı hazırlama
 - Kategori bazlı gider takibi; kategori girişi serbest metin + öneri listesi (yazınca eşleşenler listelenir, eşleşme yoksa "ekle" seçeneği çıkar, her kullanıcı kendi kategori geçmişinden sorumludur)
@@ -32,6 +33,7 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 ├─ sifre_unuttum.php      → Şifre sıfırlama talebi
 ├─ sifre_yenile.php       → Jetonla yeni şifre belirleme
 ├─ eposta_dogrula.php     → E-posta adresi doğrulama
+├─ site_sec.php           → Aktif site değiştirme (çok siteli kullanıcılar)
 ├─ goc.php                → Şema göçü (web arayüzü, anahtarla korumalı)
 ├─ config.php             → Veritabanı + SMTP ayarları (deploy EDİLMEZ)
 ├─ manifest.json          → PWA manifest (ad, ikonlar, tema rengi)
@@ -133,6 +135,90 @@ kategori, o kullanıcının `gider_kategorileri` tablosundaki kişisel listesine
   `?duzenle=<id>` ile açılan, önceki değerlerle dolu bir modal; `guncelle` işlemi `UPDATE`
   yapar). Hatalı bir girişi düzeltmek için artık silip yeniden eklemeye gerek yok.
 
+## Kimlik, Site ve Blok Modeli
+
+> Göç: `semalar/003_site_blok_modeli.sql`
+
+Sistem başlangıçta **kullanıcı = apartman** varsayımıyla yazılmıştı: apartman adı,
+adresi ve daire sayısı `kullanicilar` tablosunda tutuluyor, tüm kayıtlar
+`kullanici_id` ile filtreleniyordu. Bu model iki şeyi imkânsız kılıyordu — bir
+kişinin birden fazla apartman/site yönetmesi ve bir sitenin birden fazla bloğa
+bölünmesi. Faz 2'de **kimlik** (kim giriş yapıyor) ile **kiracı** (hangi binanın
+verisi) birbirinden ayrıldı.
+
+### Tablolar
+
+| Tablo | Rolü |
+|---|---|
+| `kullanicilar` | Yalnızca kimlik: kullanıcı adı, şifre, e-posta, tema |
+| `siteler` | Bina/site künyesi: ad, adres, telefon, tip (`apartman`/`site`), daire sayısı |
+| `bloklar` | Bir sitenin blokları (A Blok, B Blok…); tek bloklu binada "Ana Blok" |
+| `kullanici_site_yetkileri` | Hangi kullanıcı hangi siteye, hangi rolle erişir |
+| `daireler`, `aidatlar`, `giderler`, `gider_kategorileri` | Artık `site_id` ile sahiplenilir |
+
+`daireler` ayrıca isteğe bağlı bir `blok_id` taşır (blok silinirse `NULL` olur,
+daire kaybolmaz).
+
+### Göçün veri taşıma yöntemi
+
+Göç, her mevcut kullanıcı için bir site kaydı üretirken **siteye kullanıcının
+kendi id'sini verir** (`INSERT INTO siteler (id, …) SELECT id, apartman_adi, …`).
+Böylece bağlı tabloların backfill'i `UPDATE daireler SET site_id = kullanici_id`
+kadar basit ve kayıpsız olur; JOIN ile eşleme yapıp yanlış satır güncelleme
+riski oluşmaz. Sonrasında `siteler.id` normal AUTO_INCREMENT olarak devam eder,
+yeni sitelerin id'si kullanıcı id'leriyle ilişkisizdir.
+
+Göç sonrası eski `kullanicilar.apartman_adi`/`adres`/`telefon`/`toplam_daire`
+sütunları **düşürülmez** — yalnızca okunmaz hâle gelir. Geri dönüş gerekirse veri
+yerinde durur.
+
+### Davranış değişikliği: kullanıcı silmek artık binayı silmiyor
+
+Eskiden `daireler.kullanici_id` üzerinde `ON DELETE CASCADE` bir yabancı anahtar
+vardı; bir kullanıcı silindiğinde daireleri, dolayısıyla aidat geçmişi de
+zincirleme siliniyordu. Yeni modelde daire siteye bağlıdır
+(`fk_daire_site … ON DELETE CASCADE`), kullanıcıya değil. `fk_daire_kullanici`
+kaldırıldı. Artık bir yöneticinin hesabını silmek yalnızca o kişinin erişimini
+sonlandırır; binanın verisi yerinde kalır ve başka bir kullanıcıya yetki
+verilebilir.
+
+Aynı göç `uq_kullanici_daire` benzersizlik kısıtını da kaldırıp yerine
+`uq_site_daire (site_id, daire_no)` koyar — yani aynı kullanıcı iki farklı sitede
+"Daire 1"e sahip olabilir, ki eski kısıt altında bu mümkün değildi.
+
+### Aktif site seçimi (güvenlik kontrolü)
+
+Oturumdaki aktif site `$_SESSION['aktif_site_id']` içinde tutulur, ancak bu değer
+**hiçbir zaman doğrudan güvenilmez**. Her istekte `giris_kontrol()` →
+`aktif_site_belirle()` çalışır ve istenen site id'si `kullanici_site_yetkileri`
+ile JOIN'lenerek doğrulanır:
+
+- Yetki yoksa istenen id yok sayılır, kullanıcının yetkili olduğu ilk siteye düşülür.
+- Hiç yetkisi yoksa oturum sonlandırılır.
+- Sayfalar `$kullanici['site_id']` kullanır; `$kullanici['id']` yalnızca kimlik içindir.
+
+`site_sec.php` (site değiştirme uç noktası) aynı doğrulamayı bir kez daha yapar
+(savunma katmanı), reddedilen denemeleri `site_degistirme_reddedildi` olarak
+denetim kaydına yazar ve `geri` parametresini yalnızca site içi göreli yollara
+kısıtlayarak açık yönlendirmeyi (open redirect) engeller.
+
+Site seçici arayüzde **yalnızca birden fazla siteye yetkili kullanıcıya**
+gösterilir; tek siteli kullanıcı için ekran hiç değişmez.
+
+### Blok yönetimi
+
+Bloklar `ayarlar.php` üzerinden eklenir/silinir; son blok silinemez. Blok
+seçimi `daireler.php` içindeki ekleme ve düzenleme formlarında yer alır ve
+`gecerli_blok_id()` ile doğrulanır — başka bir siteye ait blok id'si gönderilirse
+sessizce `NULL` yazılır, çapraz site referansı oluşmaz. Site tek bloklu ise
+daire listesinde blok sütunu gösterilmez.
+
+### Göç uygulanmadan önce
+
+`site_semasi_hazir_mi()` kontrolü sayesinde uygulama göç uygulanmadan da çalışır:
+eski `kullanici_id` tabanlı davranışa düşer, site seçici ve blok arayüzü gizlenir.
+Bu, "önce deploy, sonra göç" sırasının güvenli olmasını sağlar.
+
 ## Güvenlik Notları
 
 - Tüm veritabanı sorguları PDO prepared statement kullanır; ham SQL birleştirmesi yoktur.
@@ -143,7 +229,8 @@ kategori, o kullanıcının `gider_kategorileri` tablosundaki kişisel listesine
 - Oturum, 5 dakika hareketsizlikte otomatik sonlanır (`SESSION_SURE`, `config.php`). "Beni Hatırla" işaretlenerek girilen oturumlar bu sınırdan etkilenmez — bkz. aşağıdaki "Beni Hatırla" bölümü.
 - Tüm sayfa yanıtlarına `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` ve temel bir `Content-Security-Policy` (frame-ancestors) header'ı eklenir.
 - Veritabanı bağlantı hataları kullanıcıya detay sızdırmaz; hata sunucu log'una (`error_log`) yazılır, kullanıcıya jenerik bir mesaj gösterilir.
-- Her sorgu oturum sahibinin `kullanici_id` değeriyle filtrelenir; kiracılar (apartmanlar) arası veri sızıntısını önlemek için bu izolasyon tüm modüllerde korunmalıdır.
+- Her sorgu **aktif sitenin** `site_id` değeriyle filtrelenir (`$kullanici['site_id']`); aktif site her istekte `kullanici_site_yetkileri` üzerinden yeniden doğrulanır, oturumdaki değere güvenilmez. Kiracılar (binalar) arası veri sızıntısını önlemek için bu izolasyon tüm modüllerde korunmalıdır — bkz. "Kimlik, Site ve Blok Modeli".
+- Kullanıcıya ait olmayan bir kayda id ile doğrudan erişim denemesi (`daire_detay.php?id=…`, `daire_print.php?id=…`) sorgu düzeyinde `site_id` filtresine takılır; yetkisiz istek veri döndürmez.
 
 **Bilinen sınırlamalar / öneriler:**
 - Giriş formunda kaba kuvvet (brute-force) koruması (deneme sınırı, kilitleme, CAPTCHA) bulunmuyor.
