@@ -14,12 +14,16 @@ $menu = [
   ['dosya'=>'giderler.php',  'etiket'=>'Giderler',  'ikon'=>'📋'],
 ];
 
-// Daha paneli
-$more_pages = [
-  ['dosya'=>'raporlar.php', 'etiket'=>'Raporlar', 'ikon'=>'📊'],
-  ['dosya'=>'ayarlar.php',  'etiket'=>'Ayarlar',  'ikon'=>'⚙️'],
-  ['dosya'=>'cikis.php',    'etiket'=>'Çıkış',    'ikon'=>'🚪'],
-];
+// Daha paneli — operasyonel modüller yalnızca göç 005 uygulandıysa
+// gösterilir; aksi halde tıklandığında boş bir uyarı sayfası çıkardı.
+$more_pages = [['dosya'=>'raporlar.php', 'etiket'=>'Raporlar', 'ikon'=>'📊']];
+if (operasyon_semasi_hazir_mi()) {
+  $more_pages[] = ['dosya'=>'talepler.php',   'etiket'=>'Talepler',  'ikon'=>'🛠'];
+  $more_pages[] = ['dosya'=>'demirbaslar.php','etiket'=>'Demirbaş',  'ikon'=>'🏗'];
+  $more_pages[] = ['dosya'=>'personel.php',   'etiket'=>'Personel',  'ikon'=>'👷'];
+}
+$more_pages[] = ['dosya'=>'ayarlar.php', 'etiket'=>'Ayarlar', 'ikon'=>'⚙️'];
+$more_pages[] = ['dosya'=>'cikis.php',   'etiket'=>'Çıkış',   'ikon'=>'🚪'];
 $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
 ?>
 <!DOCTYPE html>
@@ -69,7 +73,15 @@ $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
     </div>
   </a>
   <nav class="sidebar-nav">
-    <?php foreach (array_merge($menu, [['dosya'=>'raporlar.php','etiket'=>'Raporlar','ikon'=>'📊']]) as $m): ?>
+    <?php
+    // Kenar çubuğunda ana menü + raporlar + (varsa) operasyonel modüller
+    $yan_menu = array_merge($menu, [['dosya'=>'raporlar.php','etiket'=>'Raporlar','ikon'=>'📊']]);
+    if (operasyon_semasi_hazir_mi()) {
+      $yan_menu[] = ['dosya'=>'talepler.php',    'etiket'=>'Talepler', 'ikon'=>'🛠'];
+      $yan_menu[] = ['dosya'=>'demirbaslar.php', 'etiket'=>'Demirbaş', 'ikon'=>'🏗'];
+      $yan_menu[] = ['dosya'=>'personel.php',    'etiket'=>'Personel', 'ikon'=>'👷'];
+    }
+    foreach ($yan_menu as $m): ?>
     <a href="/<?= $m['dosya'] ?>" class="nav-item <?= $aktif_sayfa === $m['dosya'] ? 'active' : '' ?>">
       <span class="nav-icon"><?= $m['ikon'] ?></span> <?= e($m['etiket']) ?>
     </a>

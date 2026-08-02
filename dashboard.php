@@ -40,8 +40,50 @@ $stmt = $db->prepare("SELECT * FROM giderler WHERE site_id=? AND donem=? ORDER B
 $stmt->execute([$kullanici['site_id'], $donem]);
 $son_giderler = $stmt->fetchAll();
 
+// Operasyonel göstergeler (göç 005 uygulanmadıysa boş döner)
+$acik_talep      = acik_talep_sayisi((int)$kullanici['site_id']);
+$bakim_uyarilari = yaklasan_bakimlar((int)$kullanici['site_id'], 30);
+
 include 'includes/header.php';
 ?>
+
+<?php if ($acik_talep > 0 || $bakim_uyarilari): ?>
+<!-- Operasyonel uyarılar: yasal periyodik kontroller kaçırıldığında
+     yönetim için sorumluluk doğar, bu yüzden mali kartların ÜSTÜNDE. -->
+<div class="ops-uyari-grid">
+  <?php if ($acik_talep > 0): ?>
+  <a href="/talepler.php" class="ops-uyari" style="--ops-renk:#e94560">
+    <span class="ops-ikon">🛠</span>
+    <span>
+      <strong><?= (int)$acik_talep ?> açık talep</strong>
+      <small>Arıza ve istek bildirimleri bekliyor</small>
+    </span>
+  </a>
+  <?php endif; ?>
+
+  <?php if ($bakim_uyarilari): ?>
+    <?php
+    $gecikmis = count(array_filter($bakim_uyarilari, fn($b) => (int)$b['kalan_gun'] < 0));
+    $renk = $gecikmis > 0 ? '#e74c3c' : '#f5a623';
+    ?>
+    <a href="/demirbaslar.php" class="ops-uyari" style="--ops-renk:<?= $renk ?>">
+      <span class="ops-ikon">⏰</span>
+      <span>
+        <strong>
+          <?= $gecikmis > 0
+              ? $gecikmis . ' bakım GECİKTİ'
+              : count($bakim_uyarilari) . ' bakım yaklaşıyor' ?>
+        </strong>
+        <small>
+          <?= e_buyuk($bakim_uyarilari[0]['demirbas_adi']) ?> ·
+          <?= tarih_format($bakim_uyarilari[0]['planlanan_tarih']) ?>
+          <?= count($bakim_uyarilari) > 1 ? ' ve ' . (count($bakim_uyarilari) - 1) . ' tane daha' : '' ?>
+        </small>
+      </span>
+    </a>
+  <?php endif; ?>
+</div>
+<?php endif; ?>
 
 <!-- STAT KARTLARI -->
 <div class="stats-grid">
