@@ -606,3 +606,40 @@ body[data-theme="acik"] .detay-blok,
 body[data-theme="acik"] .ek-listesi li { border-color: #f1f5f9; }
 body[data-theme="acik"] .zaman-cizgisi { border-left-color: #e2e8f0; }
 body[data-theme="acik"] .zaman-cizgisi li::before { border-color: #fff; }
+
+/* ============================================================
+   FAZ 5 — KARAR DEFTERİ, BELGE ARŞİVİ, RESMİ BİLANÇO
+   ============================================================ */
+
+/* ── Yasal uyarı bandı ────────────────────────────────────── */
+/* Karar defteri, belge arşivi ve bilanço sayfalarının üstünde
+   kalıcı olarak görünür — bu modüllerin yasal aslın/mali müşavir
+   onayının yerine geçmediğini hatırlatır. Kapatılamaz bilinçli
+   olarak: bir kez kapatılıp unutulursa uyarının amacı kaybolur. */
+.uyari-yasal {
+    display: flex; align-items: flex-start; gap: 8px;
+    background: rgba(245,166,35,.1); border: 1px solid rgba(245,166,35,.3);
+    color: #f5a623; border-radius: var(--rsm, 10px);
+    padding: 11px 14px; font-size: 12.5px; line-height: 1.5;
+    margin-bottom: 16px;
+}
+body[data-theme="acik"] .uyari-yasal { background: #fff8e1; border-color: #f0d878; color: #8a6600; }
+
+/* ── Belge arşivi kart ızgarası ───────────────────────────── */
+.belge-izgara {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px; margin-top: 6px;
+}
+.belge-kart {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--rsm, 10px); padding: 14px;
+    display: flex; flex-direction: column; gap: 6px;
+}
+.belge-kart-ust { display: flex; justify-content: space-between; align-items: center; }
+.belge-ikon { font-size: 22px; }
+.belge-baslik { font-size: 14px; line-height: 1.35; }
+.belge-aciklama { font-size: 12px; color: var(--muted); margin: 0; line-height: 1.5; }
+.belge-karar-link { font-size: 12px; color: var(--accent); text-decoration: none; }
+.belge-karar-link:hover { text-decoration: underline; }
+.belge-alt { margin-top: 2px; }
+.belge-eylem { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
