@@ -42,7 +42,7 @@ body.auth-body{display:flex;align-items:center;justify-content:center;padding:ca
 .auth-orb-4{width:160px;height:160px;background:rgba(15,155,142,.08);top:3%;left:42%;animation-delay:1.8s}
 .auth-card{background:rgba(255,255,255,.055);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,.11);border-radius:22px;padding:36px 28px;width:100%;max-width:400px;position:relative;z-index:1;animation:fadeUp .45s cubic-bezier(.22,1,.36,1);box-shadow:0 32px 64px rgba(0,0,0,.45)}
 .auth-header{text-align:center;margin-bottom:26px}
-.auth-logo{font-size:44px;margin-bottom:10px}
+.auth-logo{width:72px;height:72px;margin:0 auto 12px;border-radius:18px;overflow:hidden;box-shadow:0 8px 22px var(--glow)}
 .auth-title{font-family:'Playfair Display',serif;font-size:28px;font-weight:900;background:linear-gradient(135deg,#e8e8f0,#e94560);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .auth-subtitle{color:var(--muted);font-size:13px;margin-top:5px}
 .tab-bar{display:flex;border-bottom:1px solid var(--border);margin-bottom:22px}
@@ -57,7 +57,7 @@ body.auth-body{display:flex;align-items:center;justify-content:center;padding:ca
 /* ══ DESKTOP LAYOUT ════════════════════════════════════════ */
 .sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:rgba(20,20,36,.97);backdrop-filter:blur(12px);border-right:1px solid var(--border);padding:22px 13px;display:flex;flex-direction:column;z-index:200}
 .sidebar-brand{display:flex;align-items:center;gap:10px;padding:0 6px;margin-bottom:26px}
-.brand-icon{font-size:20px;width:38px;height:38px;flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px var(--glow)}
+.brand-icon{width:38px;height:38px;flex-shrink:0;border-radius:10px;overflow:hidden;box-shadow:0 4px 14px var(--glow)}
 .brand-name{font-size:13px;font-weight:700;color:var(--text);line-height:1.2}
 .brand-user{font-size:11px;color:var(--muted)}
 .sidebar-nav{flex:1;display:flex;flex-direction:column;gap:3px;overflow-y:auto}
@@ -76,7 +76,8 @@ body.auth-body{display:flex;align-items:center;justify-content:center;padding:ca
 /* ══ MOBILE TOPBAR ═════════════════════════════════════════ */
 .mobile-topbar{display:none;position:sticky;top:0;z-index:100;background:rgba(13,13,26,.96);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:calc(10px + var(--safe-top)) 16px 10px;align-items:center;justify-content:space-between;gap:8px}
 .mobile-topbar-brand{display:flex;align-items:center;gap:10px;flex-shrink:0}
-.mobile-brand-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 3px 10px var(--glow);flex-shrink:0}
+.mobile-brand-icon{width:34px;height:34px;border-radius:9px;overflow:hidden;box-shadow:0 3px 10px var(--glow);flex-shrink:0}
+.brand-icon img,.mobile-brand-icon img,.auth-logo img{width:100%;height:100%;object-fit:contain;display:block}
 .mobile-brand-text{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
 .mobile-brand-sub{font-size:10px;color:var(--muted);margin-top:1px}
 .mobile-page-title{font-family:'Playfair Display',serif;font-size:13px;font-weight:700;color:var(--muted);position:absolute;left:50%;transform:translateX(-50%);white-space:nowrap;pointer-events:none}
@@ -483,6 +484,8 @@ body[data-theme="acik"] .table tfoot td { background: #f8fafc; border-top: 2px s
 body[data-theme="acik"] .btn-ghost { background: #f1f5f9; color: #334155; border-color: #e2e8f0; }
 body[data-theme="acik"] .btn-ghost:hover { background: #e2e8f0; }
 body[data-theme="acik"] .modal { background: #ffffff; }
+body[data-theme="acik"] .kirpici-kutu { background: #ffffff; border-color: #e2e8f0; }
+body[data-theme="acik"] .kirpici-baslik { color: #0f172a; }
 body[data-theme="acik"] .bnav-item { color: #94a3b8; }
 body[data-theme="acik"] .bnav-item.active { color: #1e293b; }
 body[data-theme="acik"] .bnav-icon-wrap.active { box-shadow: 0 4px 12px var(--glow), 0 0 0 3px #fff, 0 0 0 5px rgba(233,69,96,.15); }
@@ -576,6 +579,46 @@ body[data-theme="acik"] .donem-highlight {
 }
 .ek-listesi li:last-child { border-bottom: none; }
 .ek-listesi a { color: var(--accent); text-decoration: none; word-break: break-all; }
+
+/* ── Fiş/dekont rozeti (gider ve aidat listeleri) ─────────── */
+.fis-rozeti {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 12px; color: var(--accent); text-decoration: none;
+    background: rgba(233, 69, 96, .1); border: 1px solid rgba(233, 69, 96, .25);
+    border-radius: 999px; padding: 3px 9px;
+}
+.fis-rozeti:hover { background: rgba(233, 69, 96, .18); }
+
+/* ── Kırpma penceresi (assets/kirpici.js) ─────────────────── */
+.kirpici-overlay {
+    position: fixed; inset: 0; z-index: 2000;
+    background: rgba(0, 0, 0, .72);
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+}
+.kirpici-kutu {
+    background: #1a1a2e; border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 14px; padding: 18px; max-width: 96vw;
+    display: flex; flex-direction: column; gap: 14px; align-items: center;
+}
+.kirpici-baslik { font-size: 15px; font-weight: 700; color: var(--text); align-self: flex-start; }
+.kirpici-alan { position: relative; touch-action: none; line-height: 0; }
+.kirpici-canvas { display: block; border-radius: 4px; }
+.kirpici-secim {
+    position: absolute; border: 2px solid #fff;
+    box-shadow: 0 0 0 2000px rgba(0, 0, 0, .5);
+    cursor: move; touch-action: none;
+}
+.kirpici-tutamac {
+    position: absolute; width: 18px; height: 18px;
+    background: #fff; border-radius: 50%; border: 2px solid var(--accent);
+    touch-action: none;
+}
+.kirpici-tutamac-nw { top: -9px; left: -9px; cursor: nwse-resize; }
+.kirpici-tutamac-ne { top: -9px; right: -9px; cursor: nesw-resize; }
+.kirpici-tutamac-sw { bottom: -9px; left: -9px; cursor: nesw-resize; }
+.kirpici-tutamac-se { bottom: -9px; right: -9px; cursor: nwse-resize; }
+.kirpici-arac { display: flex; gap: 8px; align-self: flex-end; }
 
 /* ── İşlem geçmişi (zaman çizgisi) ───────────────────────── */
 .zaman-cizgisi { list-style: none; margin: 0 0 16px; padding: 0 0 0 18px; border-left: 2px solid var(--border); }

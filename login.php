@@ -214,7 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="auth-card">
   <div class="auth-header">
     <a href="/" aria-label="Ana sayfaya dön">
-      <div class="auth-logo">🏢</div>
+      <div class="auth-logo"><img src="/assets/icons/icon-192.png" alt="AYS logosu"></div>
       <h1 class="auth-title">AYS</h1>
     </a>
     <p class="auth-subtitle">Apartman Yönetim Sistemi</p>

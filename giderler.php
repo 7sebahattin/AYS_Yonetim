@@ -34,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $db->prepare("INSERT INTO giderler (site_id, kategori, aciklama, tutar, tarih, donem, fatura_no)
                                   VALUES (?,?,?,?,?,?,?)")
                        ->execute([$kullanici['site_id'], $kategori, $aciklama, $tutar, $tarih, $kayit_donem, $fatura_no]);
+                    $gider_id = (int)$db->lastInsertId();
                     $mesaj = 'Gider kaydedildi.';
                 } else {
                     $gider_id = (int)($_POST['gider_id'] ?? 0);
@@ -48,6 +49,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Yeni/kullanılan kategoriyi bu kullanıcının öneri listesine kaydet
                 gider_kategori_kaydet($kullanici['site_id'], $kategori);
                 $db->commit();
+                // Fiş/fatura fotoğrafı: göç 007 uygulanmadıysa alan zaten
+                // arayüzde gösterilmez, burada da sessizce atlanır.
+                if ($gider_id && gider_fisi_semasi_hazir_mi()) {
+                    ekleri_yukle((int)$kullanici['site_id'], 'gider', $gider_id, (int)$kullanici['id']);
+                }
                 flash($mesaj);
             } catch (Exception $ex) {
                 $db->rollBack();
@@ -69,8 +75,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $kosul = operasyon_semasi_hazir_mi() ? ' AND kaynak_tur IS NULL' : '';
             $db->prepare("DELETE FROM giderler WHERE id=? AND site_id=?" . $kosul)
                ->execute([$id, $kullanici['site_id']]);
+            if (gider_fisi_semasi_hazir_mi()) {
+                hedefin_eklerini_sil((int)$kullanici['site_id'], 'gider', $id);
+            }
             flash('Kayıt silindi.');
         }
+    }
+
+    if ($islem === 'ek_sil') {
+        // Fiş listesinden tek bir eki kaldırır; gider kaydının kendisine dokunmaz.
+        ek_sil((int)$kullanici['site_id'], (int)($_POST['ek_id'] ?? 0));
+        header("Location: /giderler.php?duzenle=" . (int)($_POST['gider_id'] ?? 0) . "&donem=$donem");
+        exit;
     }
 
     header("Location: /giderler.php?donem=$donem");
@@ -92,9 +108,23 @@ arsort($kat_ozet);
 
 $kategori_onerileri = gider_kategori_onerileri($kullanici['site_id']);
 
+// Fiş/fatura sayıları: liste tablosunda rozet göstermek için tek
+// sorguda toplu çekilir — satır başına ayrı sorgu atmaktan kaçınılır.
+$fis_sayilari = [];
+if (gider_fisi_semasi_hazir_mi() && $giderler) {
+    $ids = array_column($giderler, 'id');
+    $yer_tutucular = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $db->prepare("SELECT hedef_id, COUNT(*) AS say FROM ekler
+                          WHERE site_id=? AND hedef_tur='gider' AND hedef_id IN ($yer_tutucular)
+                          GROUP BY hedef_id");
+    $stmt->execute([$kullanici['site_id'], ...$ids]);
+    foreach ($stmt->fetchAll() as $r) $fis_sayilari[(int)$r['hedef_id']] = (int)$r['say'];
+}
+
 // Düzenleme modu
 $duzenle_id = (int)($_GET['duzenle'] ?? 0);
 $duzenle = null;
+$duzenle_ekler = [];
 if ($duzenle_id) {
     // kaynak_tur IS NULL: otomatik üretilmiş satır düzenleme modalini
     // hiç açmaz — adres çubuğundan ?duzenle= denense bile.
@@ -102,6 +132,9 @@ if ($duzenle_id) {
     $stmt = $db->prepare("SELECT * FROM giderler WHERE id=? AND site_id=?" . $kosul);
     $stmt->execute([$duzenle_id, $kullanici['site_id']]);
     $duzenle = $stmt->fetch();
+    if ($duzenle && gider_fisi_semasi_hazir_mi()) {
+        $duzenle_ekler = ekleri_getir((int)$kullanici['site_id'], 'gider', $duzenle_id);
+    }
 }
 
 include 'includes/header.php';
@@ -144,7 +177,14 @@ include 'includes/header.php';
       <td><?= e_buyuk($g['aciklama']) ?></td>
       <td><strong style="color:#e94560"><?= para((float)$g['tutar']) ?></strong></td>
       <td><?= tarih_format($g['tarih']) ?></td>
-      <td><?= $g['fatura_no'] ? e_buyuk($g['fatura_no']) : '—' ?></td>
+      <td>
+        <?= $g['fatura_no'] ? e_buyuk($g['fatura_no']) : '—' ?>
+        <?php if (!empty($fis_sayilari[$g['id']])): ?>
+          <a href="?duzenle=<?= $g['id'] ?>&donem=<?= e($donem) ?>" class="fis-rozeti" title="Fiş/fatura eklendi">
+            📎 <?= (int)$fis_sayilari[$g['id']] ?>
+          </a>
+        <?php endif; ?>
+      </td>
       <td>
         <?php if (!empty($g['kaynak_tur'] ?? null)): ?>
           <?php
@@ -201,7 +241,7 @@ include 'includes/header.php';
       <h3>+ Gider Ekle</h3>
       <button onclick="document.getElementById('modal-gider').style.display='none'" class="modal-close">×</button>
     </div>
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
       <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
       <input type="hidden" name="islem" value="ekle">
       <div class="form-grid">
@@ -230,6 +270,15 @@ include 'includes/header.php';
           <label>Fatura / Makbuz No</label>
           <input type="text" name="fatura_no" class="input buyuk" placeholder="Fatura numarası...">
         </div>
+        <?php if (gider_fisi_semasi_hazir_mi()): ?>
+        <div class="form-group full-width">
+          <label>Fiş / Fatura Fotoğrafı</label>
+          <input type="file" name="ekler[]" class="input" multiple data-kirpici
+                 accept=".jpg,.jpeg,.png,.webp,.pdf">
+          <small class="muted">Fotoğraf seçildiğinde kırpma penceresi açılır — kenarları
+            kırpıp temiz bir görsel kaydedebilirsiniz. En fazla <?= round(DOSYA_MAX_BOYUT / 1048576) ?> MB.</small>
+        </div>
+        <?php endif; ?>
       </div>
       <div class="modal-footer">
         <button type="submit" class="btn btn-primary">💾 Kaydet</button>
@@ -246,7 +295,7 @@ include 'includes/header.php';
       <h3>✎ Gider Düzenle</h3>
       <a href="/giderler.php?donem=<?= e($donem) ?>" class="modal-close">×</a>
     </div>
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
       <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
       <input type="hidden" name="islem" value="guncelle">
       <input type="hidden" name="gider_id" value="<?= $duzenle['id'] ?>">
@@ -276,12 +325,43 @@ include 'includes/header.php';
           <label>Fatura / Makbuz No</label>
           <input type="text" name="fatura_no" class="input buyuk" value="<?= e($duzenle['fatura_no']) ?>" placeholder="Fatura numarası...">
         </div>
+        <?php if (gider_fisi_semasi_hazir_mi()): ?>
+        <div class="form-group full-width">
+          <label>Fiş / Fatura Fotoğrafı Ekle</label>
+          <input type="file" name="ekler[]" class="input" multiple data-kirpici
+                 accept=".jpg,.jpeg,.png,.webp,.pdf">
+          <small class="muted">Fotoğraf seçildiğinde kırpma penceresi açılır. En fazla
+            <?= round(DOSYA_MAX_BOYUT / 1048576) ?> MB.</small>
+        </div>
+        <?php endif; ?>
       </div>
       <div class="modal-footer">
         <button type="submit" class="btn btn-primary">💾 Kaydet</button>
         <a href="/giderler.php?donem=<?= e($donem) ?>" class="btn btn-ghost">İptal</a>
       </div>
     </form>
+    <?php if ($duzenle_ekler): ?>
+    <div class="form-grid" style="padding:0 20px 20px">
+      <div class="form-group full-width">
+        <label>Kayıtlı Fişler</label>
+        <ul class="ek-listesi">
+          <?php foreach ($duzenle_ekler as $ek): ?>
+          <li>
+            <a href="/belge_indir.php?id=<?= (int)$ek['id'] ?>" target="_blank" rel="noopener">📎 <?= e($ek['orijinal_ad']) ?></a>
+            <span class="muted"><?= e(boyut_okunabilir((int)$ek['boyut'])) ?></span>
+            <form method="post" style="display:inline">
+              <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+              <input type="hidden" name="islem" value="ek_sil">
+              <input type="hidden" name="ek_id" value="<?= (int)$ek['id'] ?>">
+              <input type="hidden" name="gider_id" value="<?= (int)$duzenle['id'] ?>">
+              <button type="submit" class="btn btn-sm btn-danger" data-confirm="Bu fiş silinsin mi?">✕</button>
+            </form>
+          </li>
+          <?php endforeach; ?>
+        </ul>
+      </div>
+    </div>
+    <?php endif; ?>
   </div>
 </div>
 <?php endif; ?>

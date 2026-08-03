@@ -126,6 +126,8 @@ function eposta_sablonu(string $baslik, string $govde_html, string $buton_metni 
              . $alt_not . '</td></tr>';
     }
     $baslik_g = htmlspecialchars($baslik, ENT_QUOTES, 'UTF-8');
+    // E-posta istemcileri site kökünden göreli yol çözemez; mutlak URL şart.
+    $logo_url = rtrim(SITE_ADRESI, '/') . '/assets/icons/icon-192.png';
 
     return <<<HTML
 <!DOCTYPE html>
@@ -138,7 +140,9 @@ function eposta_sablonu(string $baslik, string $govde_html, string $buton_metni 
          style="max-width:520px;background:#ffffff;border-radius:14px;overflow:hidden;
                 box-shadow:0 2px 12px rgba(0,0,0,.07)">
     <tr><td style="background:linear-gradient(135deg,#e94560,#c73652);padding:22px 28px">
-      <span style="color:#ffffff;font-size:19px;font-weight:700;letter-spacing:.5px">🏢 AYS</span>
+      <img src="{$logo_url}" width="26" height="26" alt="AYS"
+           style="width:26px;height:26px;border-radius:6px;vertical-align:middle;display:inline-block">
+      <span style="color:#ffffff;font-size:19px;font-weight:700;letter-spacing:.5px;vertical-align:middle;margin-left:8px">AYS</span>
       <span style="color:rgba(255,255,255,.85);font-size:13px;display:block;margin-top:2px">
         Apartman Yönetim Sistemi</span>
     </td></tr>
