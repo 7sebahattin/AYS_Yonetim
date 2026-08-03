@@ -22,22 +22,22 @@ $stmt = $db->prepare("
            a.odeme_tarihi, a.dekont_no, a.notlar
     FROM daireler d
     LEFT JOIN aidatlar a ON a.daire_id = d.id AND a.donem = ?
-    WHERE d.kullanici_id = ?
+    WHERE d.site_id = ?
     ORDER BY d.daire_no
 ");
-$stmt->execute([$donem, $kullanici['id']]);
+$stmt->execute([$donem, $kullanici['site_id']]);
 $daire_listesi = $stmt->fetchAll();
 
 // Giderler
-$stmt = $db->prepare("SELECT * FROM giderler WHERE kullanici_id=? AND donem=? ORDER BY tarih");
-$stmt->execute([$kullanici['id'], $donem]);
+$stmt = $db->prepare("SELECT * FROM giderler WHERE site_id=? AND donem=? ORDER BY tarih");
+$stmt->execute([$kullanici['site_id'], $donem]);
 $gider_listesi = $stmt->fetchAll();
 
 // Özet
-$stats = istatistikler($kullanici['id'], $donem);
+$stats = istatistikler($kullanici['site_id'], $donem);
 
 // Filtrelenmiş Trend
-$trend = trend_verisi($kullanici['id'], $trend_baslangic, $trend_bitis);
+$trend = trend_verisi($kullanici['site_id'], $trend_baslangic, $trend_bitis);
 
 include 'includes/header.php';
 ?>

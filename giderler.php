@@ -31,19 +31,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $db->beginTransaction();
             try {
                 if ($islem === 'ekle') {
-                    $db->prepare("INSERT INTO giderler (kullanici_id, kategori, aciklama, tutar, tarih, donem, fatura_no)
+                    $db->prepare("INSERT INTO giderler (site_id, kategori, aciklama, tutar, tarih, donem, fatura_no)
                                   VALUES (?,?,?,?,?,?,?)")
-                       ->execute([$kullanici['id'], $kategori, $aciklama, $tutar, $tarih, $kayit_donem, $fatura_no]);
+                       ->execute([$kullanici['site_id'], $kategori, $aciklama, $tutar, $tarih, $kayit_donem, $fatura_no]);
                     $mesaj = 'Gider kaydedildi.';
                 } else {
                     $gider_id = (int)($_POST['gider_id'] ?? 0);
+                    // kaynak_tur IS NULL koşulu: otomatik üretilmiş satır
+                    // burada değiştirilirse kaynak kayıtla ayrışır.
+                    $kosul = operasyon_semasi_hazir_mi() ? ' AND kaynak_tur IS NULL' : '';
                     $db->prepare("UPDATE giderler SET kategori=?, aciklama=?, tutar=?, tarih=?, donem=?, fatura_no=?
-                                  WHERE id=? AND kullanici_id=?")
-                       ->execute([$kategori, $aciklama, $tutar, $tarih, $kayit_donem, $fatura_no, $gider_id, $kullanici['id']]);
+                                  WHERE id=? AND site_id=?" . $kosul)
+                       ->execute([$kategori, $aciklama, $tutar, $tarih, $kayit_donem, $fatura_no, $gider_id, $kullanici['site_id']]);
                     $mesaj = 'Gider güncellendi.';
                 }
                 // Yeni/kullanılan kategoriyi bu kullanıcının öneri listesine kaydet
-                gider_kategori_kaydet($kullanici['id'], $kategori);
+                gider_kategori_kaydet($kullanici['site_id'], $kategori);
                 $db->commit();
                 flash($mesaj);
             } catch (Exception $ex) {
@@ -55,8 +58,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($islem === 'sil') {
         $id = (int)$_POST['gider_id'];
-        $db->prepare("DELETE FROM giderler WHERE id=? AND kullanici_id=?")->execute([$id, $kullanici['id']]);
-        flash('Kayıt silindi.');
+        // Bakım/personel/talep kaydından otomatik üretilmiş gider satırı
+        // buradan SİLİNEMEZ: silinseydi kaynak kayıt hâlâ "gidere
+        // işlendi" derken defterde karşılığı olmazdı. Silme, kaynak
+        // modülünden yapılır ve iki kayıt birlikte kalkar.
+        if (operasyon_semasi_hazir_mi() && bagli_gider_mi($id, (int)$kullanici['site_id'])) {
+            flash('Bu gider bir bakım/personel/talep kaydından geliyor. '
+                . 'Silmek için ilgili modüldeki kaydı silin.', 'hata');
+        } else {
+            $kosul = operasyon_semasi_hazir_mi() ? ' AND kaynak_tur IS NULL' : '';
+            $db->prepare("DELETE FROM giderler WHERE id=? AND site_id=?" . $kosul)
+               ->execute([$id, $kullanici['site_id']]);
+            flash('Kayıt silindi.');
+        }
     }
 
     header("Location: /giderler.php?donem=$donem");
@@ -64,8 +78,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ─── VERİ ÇEK ────────────────────────────────────────────────
-$stmt = $db->prepare("SELECT * FROM giderler WHERE kullanici_id=? AND donem=? ORDER BY tarih DESC");
-$stmt->execute([$kullanici['id'], $donem]);
+$stmt = $db->prepare("SELECT * FROM giderler WHERE site_id=? AND donem=? ORDER BY tarih DESC");
+$stmt->execute([$kullanici['site_id'], $donem]);
 $giderler = $stmt->fetchAll();
 
 $toplam = array_sum(array_column($giderler, 'tutar'));
@@ -76,14 +90,17 @@ foreach ($giderler as $g) {
 }
 arsort($kat_ozet);
 
-$kategori_onerileri = gider_kategori_onerileri($kullanici['id']);
+$kategori_onerileri = gider_kategori_onerileri($kullanici['site_id']);
 
 // Düzenleme modu
 $duzenle_id = (int)($_GET['duzenle'] ?? 0);
 $duzenle = null;
 if ($duzenle_id) {
-    $stmt = $db->prepare("SELECT * FROM giderler WHERE id=? AND kullanici_id=?");
-    $stmt->execute([$duzenle_id, $kullanici['id']]);
+    // kaynak_tur IS NULL: otomatik üretilmiş satır düzenleme modalini
+    // hiç açmaz — adres çubuğundan ?duzenle= denense bile.
+    $kosul = operasyon_semasi_hazir_mi() ? ' AND kaynak_tur IS NULL' : '';
+    $stmt = $db->prepare("SELECT * FROM giderler WHERE id=? AND site_id=?" . $kosul);
+    $stmt->execute([$duzenle_id, $kullanici['site_id']]);
     $duzenle = $stmt->fetch();
 }
 
@@ -129,13 +146,38 @@ include 'includes/header.php';
       <td><?= tarih_format($g['tarih']) ?></td>
       <td><?= $g['fatura_no'] ? e_buyuk($g['fatura_no']) : '—' ?></td>
       <td>
-        <a href="?duzenle=<?= $g['id'] ?>&donem=<?= e($donem) ?>" class="btn btn-sm btn-ghost">✎ Düzenle</a>
-        <form method="post" style="display:inline">
-          <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
-          <input type="hidden" name="islem" value="sil">
-          <input type="hidden" name="gider_id" value="<?= $g['id'] ?>">
-          <button type="submit" class="btn btn-sm btn-danger" data-confirm="Bu gider kaydı silinsin mi?">✕ Sil</button>
-        </form>
+        <?php if (!empty($g['kaynak_tur'] ?? null)): ?>
+          <?php
+          // Otomatik üretilmiş satır. Kaynak modülüne yönlendirilir;
+          // burada düzenlenmesi/silinmesi iki kaydı ayrıştırırdı.
+          $kaynak_yol = match ($g['kaynak_tur']) {
+              'bakim'    => '/demirbaslar.php',
+              'personel' => '/personel.php',
+              'talep'    => '/talepler.php?ac=' . (int)$g['kaynak_id'],
+              default    => null,
+          };
+          $kaynak_ad = match ($g['kaynak_tur']) {
+              'bakim'    => 'Bakım kaydı',
+              'personel' => 'Personel ödemesi',
+              'talep'    => 'Talep #' . (int)$g['kaynak_id'],
+              default    => 'Bağlı kayıt',
+          };
+          ?>
+          <span class="badge" style="background:#6c8cff22;color:#6c8cff" title="Bu satır otomatik oluşturuldu">
+            🔗 <?= e($kaynak_ad) ?>
+          </span>
+          <?php if ($kaynak_yol): ?>
+            <a href="<?= e($kaynak_yol) ?>" class="btn btn-sm btn-ghost">Kayda git</a>
+          <?php endif; ?>
+        <?php else: ?>
+          <a href="?duzenle=<?= $g['id'] ?>&donem=<?= e($donem) ?>" class="btn btn-sm btn-ghost">✎ Düzenle</a>
+          <form method="post" style="display:inline">
+            <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+            <input type="hidden" name="islem" value="sil">
+            <input type="hidden" name="gider_id" value="<?= $g['id'] ?>">
+            <button type="submit" class="btn btn-sm btn-danger" data-confirm="Bu gider kaydı silinsin mi?">✕ Sil</button>
+          </form>
+        <?php endif; ?>
       </td>
     </tr>
     <?php endforeach; ?>

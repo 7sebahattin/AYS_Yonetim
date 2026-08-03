@@ -27,7 +27,7 @@ if (!preg_match('/^\d{4}-\d{2}$/', $donem)) {
 
 // ═══ VERİYİ ÇEK ═════════════════════════════════════════════
 $data = [];
-$stats = istatistikler($kullanici['id'], $donem);
+$stats = istatistikler($kullanici['site_id'], $donem);
 
 // Tip'e göre veri çek
 switch ($type) {
@@ -39,18 +39,18 @@ switch ($type) {
                    a.odeme_tarihi, a.dekont_no, a.notlar
             FROM daireler d
             LEFT JOIN aidatlar a ON a.daire_id = d.id AND a.donem = ?
-            WHERE d.kullanici_id = ?
+            WHERE d.site_id = ?
             ORDER BY d.daire_no
         ");
-        $stmt->execute([$donem, $kullanici['id']]);
+        $stmt->execute([$donem, $kullanici['site_id']]);
         $data['aidatlar'] = $stmt->fetchAll();
         
         if ($type === 'aidat') break;
         // full için devam et
         
     case 'gider':
-        $stmt = $db->prepare("SELECT * FROM giderler WHERE kullanici_id=? AND donem=? ORDER BY tarih");
-        $stmt->execute([$kullanici['id'], $donem]);
+        $stmt = $db->prepare("SELECT * FROM giderler WHERE site_id=? AND donem=? ORDER BY tarih");
+        $stmt->execute([$kullanici['site_id'], $donem]);
         $data['giderler'] = $stmt->fetchAll();
         
         if ($type === 'gider') break;
@@ -60,7 +60,7 @@ switch ($type) {
         $trend_bitis = $_GET['trend_bitis'] ?? $donem;
         $trend_baslangic = $_GET['trend_baslangic'] ?? date('Y-m', strtotime($trend_bitis . '-01 -11 months'));
 
-        $data['trend'] = trend_verisi($kullanici['id'], $trend_baslangic, $trend_bitis);
+        $data['trend'] = trend_verisi($kullanici['site_id'], $trend_baslangic, $trend_bitis);
         break;
 }
 

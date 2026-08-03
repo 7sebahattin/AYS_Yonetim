@@ -5,7 +5,8 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 ## Özellikler
 
 - Kullanıcı bazlı apartman hesabı (kayıt olduğunuzda kendi apartmanınız ve daireleriniz otomatik oluşturulur)
-- Daire yönetimi (ekle/düzenle/sil, sakin bilgisi, aylık aidat tutarı)
+- **Çoklu site / çoklu blok**: bir kullanıcı birden fazla apartman veya site yönetebilir, aralarında tek tıkla geçiş yapar; her site bloklara (A Blok, B Blok…) ayrılabilir
+- Daire yönetimi (ekle/düzenle/sil, blok ataması, sakin bilgisi, aylık aidat tutarı)
 - Dönem bazlı aidat/ödeme takibi, toplu dönem oluşturma, toplu/tekil ödeme girişi
 - WhatsApp üzerinden sakine borç/ödeme durumu mesajı hazırlama
 - Kategori bazlı gider takibi; kategori girişi serbest metin + öneri listesi (yazınca eşleşenler listelenir, eşleşme yoksa "ekle" seçeneği çıkar, her kullanıcı kendi kategori geçmişinden sorumludur)
@@ -13,6 +14,13 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 - Yazdırılabilir A4 raporlar (aidat, gider, trend, tam rapor, daire detay raporu)
 - Açık/koyu tema
 - Progressive Web App: ana ekrana yüklenebilir, uygulama gibi açılır
+- **Arıza / talep takibi**: kategori, öncelik ve durum akışıyla; fotoğraf eki, personel ataması, işlem geçmişi ve maliyetin gidere aktarılması
+- **Demirbaş ve bakım takibi**: asansör, yangın, jeneratör gibi ekipmanların künyesi; yasal periyodik kontroller için otomatik zincir ve e-posta hatırlatma
+- **Personel yönetimi**: görev, ücret ve ödeme geçmişi; her ödeme gider defterine otomatik işlenir
+- **Karar defteri / belge arşivi**: toplantı kararları (katılım oranı, oy dağılımı), belge yükleme, karar-belge bağlantısı — dijital yedek, yasal aslın yerine geçmez
+- **Aidat dışı gelirler**: kira, gecikme cezası, bağış, demirbaş satışı
+- **Resmi bilanço / yıl sonu kapanışı**: açılış bakiyesi, gelir-gider özeti, daire bazlı borç listesi, kategori kırılımı, önceki yılla karşılaştırma, A4 yazdırma, otomatik devir zinciriyle yıl kapatma
+- **Platform yönetim paneli** (`/yonetim/`): tüm siteler, kullanıcılar, denetim kaydı, sistem duyuruları, tanıtım sayfası içeriği ve bakım modu — zorunlu iki faktörlü doğrulama arkasında
 
 ## Klasör Yapısı
 
@@ -27,13 +35,63 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 ├─ giderler.php           → Gider takibi
 ├─ raporlar.php           → Özet ve trend raporları
 ├─ print.php / daire_print.php → Yazdırılabilir raporlar
-├─ ayarlar.php            → Hesap / apartman / tema ayarları
+├─ ayarlar.php            → Hesap / apartman / e-posta / tema ayarları
 ├─ cikis.php              → Çıkış
-├─ config.php             → Veritabanı bağlantı ayarları
+├─ sifre_unuttum.php      → Şifre sıfırlama talebi
+├─ sifre_yenile.php       → Jetonla yeni şifre belirleme
+├─ eposta_dogrula.php     → E-posta adresi doğrulama
+├─ site_sec.php           → Aktif site değiştirme (çok siteli kullanıcılar)
+├─ talepler.php           → Arıza / talep bildirimi
+├─ demirbaslar.php        → Demirbaş envanteri ve bakım takibi
+├─ personel.php           → Personel ve ödeme yönetimi
+├─ belge_indir.php        → Dosya indirme bekçisi (yetki kontrollü, iki kaynak: ek/belge)
+├─ kararlar.php           → Karar defteri (dijital arşiv)
+├─ belgeler.php           → Belge arşivi (yönetim planı, sözleşme, poliçe, ruhsat...)
+├─ gelirler.php           → Aidat dışı gelirler (kira, gecikme cezası, bağış...)
+├─ bilanco.php            → Resmi bilanço / yıl sonu kapanış ekranı
+├─ print_bilanco.php      → Bilanço A4 yazdırma
+├─ goc.php                → Şema göçü (web arayüzü, anahtarla korumalı)
+├─ yonetim/               → Platform yönetim paneli (süper admin)
+│  ├─ ortak.php            → Panel önyükleme + yetki bekçisi
+│  ├─ giris.php            → Ayrı giriş yolu (şifre + zorunlu 2FA)
+│  ├─ index.php            → Platform istatistikleri
+│  ├─ siteler.php / site_detay.php → Tüm siteler, askıya alma, destek işlemleri
+│  ├─ kullanicilar.php     → Platform rolü, şifre sıfırlama, 2FA sıfırlama
+│  ├─ duyurular.php        → Sistem duyuruları
+│  ├─ icerik.php           → Tanıtım sayfası metinleri ve SSS
+│  ├─ denetim.php          → Denetim kaydı görünümü (filtreli)
+│  ├─ goc.php              → Göçleri panelden çalıştırma
+│  ├─ ayarlar.php          → Bakım modu, IP kısıtı, bürünme yazma izni
+│  ├─ iki_faktor.php       → TOTP kurulumu ve yedek kodlar
+│  ├─ burun.php            → Kullanıcı adına görüntüleme başlat/bitir
+│  └─ kurulum.php          → İlk süper admin atama (tek seferlik)
+├─ araclar/superadmin_ata.php → Platform rolü atama (CLI)
+├─ araclar/bakim_hatirlatma.php → Yaklaşan bakım e-postası (cron)
+├─ config.php             → Veritabanı + SMTP ayarları (deploy EDİLMEZ)
 ├─ manifest.json          → PWA manifest (ad, ikonlar, tema rengi)
 ├─ sw.js                  → Service worker (yalnızca statik varlıkları önbelleğe alır)
 ├─ offline.html           → Çevrimdışı iken gösterilen jenerik sayfa
-├─ includes/              → Ortak fonksiyonlar, header/footer, yazdırma yardımcıları
+├─ semalar/               → Şema göçü (migration) SQL dosyaları
+├─ araclar/goc_cli.php    → Şema göçü (komut satırı)
+├─ vendor/PHPMailer/      → SMTP kütüphanesi (elle eklendi, LGPL-2.1)
+├─ includes/              → Ortak fonksiyonlar ve altyapı katmanları
+│  ├─ functions.php        → Oturum, CSRF, yetki, biçimlendirme
+│  ├─ varsayilanlar.php    → config.php'de tanımsız ayarlara güvenli varsayılan
+│  ├─ goc.php              → Göç çalıştırıcı
+│  ├─ eposta.php           → SMTP gönderim katmanı + HTML şablon
+│  ├─ kimlik.php           → Şifre sıfırlama / e-posta doğrulama jetonları
+│  ├─ denetim.php          → Denetim kaydı (audit log)
+│  ├─ hiz_limiti.php       → Hız sınırlama (brute-force / spam koruması)
+│  ├─ dosya.php            → Dosya yükleme ve güvenli saklama
+│  ├─ platform.php         → Platform rolleri, bakım modu, duyurular, bürünme
+│  ├─ totp.php             → İki faktörlü doğrulama (RFC 6238 TOTP)
+│  ├─ tanitim_icerik.php   → Tanıtım sayfası varsayılan metinleri
+│  ├─ operasyon.php        → Talep/bakım/personel ortak katmanı, gider bağlama, ekler
+│  ├─ demirbas_form.php    → Demirbaş form alanları (ekle + düzenle ortak)
+│  ├─ personel_form.php    → Personel form alanları (ekle + düzenle ortak)
+│  ├─ arsiv.php            → Karar/belge ortak katmanı (etiketler, karar no önerisi)
+│  ├─ mali_yil.php         → Bilanço hesaplama (yillik_ozet, yıl kapatma zinciri)
+│  └─ header.php / footer.php / print_utils.php
 └─ assets/                → CSS/JS dosyaları
    ├─ style.css            → Panel stilleri (mobil dahil)
    ├─ landing.css           → Tanıtım sayfası stilleri
@@ -61,8 +119,10 @@ Kök adres (`index.php`) herkese açık bir tanıtım sayfasıdır: hero, özell
 - Anahtar kelime odaklı `<title>`, meta description ve keywords (*apartman yönetim
   yazılımı*, *site aidat takip sistemi* vb.), `canonical`, Open Graph ve Twitter Card etiketleri.
 - **JSON-LD yapısal veri**: `SoftwareApplication` künyesi + `FAQPage`. SSS içeriği tek
-  bir PHP dizisinden hem sayfaya hem yapısal veriye yazılır; böylece Google'ın
-  uyuşmazlık cezasına yol açan HTML ↔ schema farkı oluşamaz.
+  kaynaktan hem sayfaya hem yapısal veriye yazılır; böylece Google'ın uyuşmazlık
+  cezasına yol açan HTML ↔ schema farkı oluşamaz.
+- Başlık, meta açıklama, hero metni ve SSS **yönetim panelinden düzenlenebilir**
+  (bkz. "Platform Yönetimi"); kayıt yoksa koddaki varsayılan metin kullanılır.
 - SSS accordion'u JavaScript'siz `<details>/<summary>` ile kurulmuştur — içerik ilk
   HTML yanıtında yer aldığı için tarayıcı ve arama motoru tarafından okunabilir.
 - `login.php` `noindex, follow` ile işaretlidir; ince/yinelenen içeriğin indekslenmesini
@@ -117,6 +177,438 @@ kategori, o kullanıcının `gider_kategorileri` tablosundaki kişisel listesine
   `?duzenle=<id>` ile açılan, önceki değerlerle dolu bir modal; `guncelle` işlemi `UPDATE`
   yapar). Hatalı bir girişi düzeltmek için artık silip yeniden eklemeye gerek yok.
 
+## Kimlik, Site ve Blok Modeli
+
+> Göç: `semalar/003_site_blok_modeli.sql`
+
+Sistem başlangıçta **kullanıcı = apartman** varsayımıyla yazılmıştı: apartman adı,
+adresi ve daire sayısı `kullanicilar` tablosunda tutuluyor, tüm kayıtlar
+`kullanici_id` ile filtreleniyordu. Bu model iki şeyi imkânsız kılıyordu — bir
+kişinin birden fazla apartman/site yönetmesi ve bir sitenin birden fazla bloğa
+bölünmesi. Faz 2'de **kimlik** (kim giriş yapıyor) ile **kiracı** (hangi binanın
+verisi) birbirinden ayrıldı.
+
+### Tablolar
+
+| Tablo | Rolü |
+|---|---|
+| `kullanicilar` | Yalnızca kimlik: kullanıcı adı, şifre, e-posta, tema |
+| `siteler` | Bina/site künyesi: ad, adres, telefon, tip (`apartman`/`site`), daire sayısı |
+| `bloklar` | Bir sitenin blokları (A Blok, B Blok…); tek bloklu binada "Ana Blok" |
+| `kullanici_site_yetkileri` | Hangi kullanıcı hangi siteye, hangi rolle erişir |
+| `daireler`, `aidatlar`, `giderler`, `gider_kategorileri` | Artık `site_id` ile sahiplenilir |
+
+`daireler` ayrıca isteğe bağlı bir `blok_id` taşır (blok silinirse `NULL` olur,
+daire kaybolmaz).
+
+### Göçün veri taşıma yöntemi
+
+Göç, her mevcut kullanıcı için bir site kaydı üretirken **siteye kullanıcının
+kendi id'sini verir** (`INSERT INTO siteler (id, …) SELECT id, apartman_adi, …`).
+Böylece bağlı tabloların backfill'i `UPDATE daireler SET site_id = kullanici_id`
+kadar basit ve kayıpsız olur; JOIN ile eşleme yapıp yanlış satır güncelleme
+riski oluşmaz. Sonrasında `siteler.id` normal AUTO_INCREMENT olarak devam eder,
+yeni sitelerin id'si kullanıcı id'leriyle ilişkisizdir.
+
+Göç sonrası eski `kullanicilar.apartman_adi`/`adres`/`telefon`/`toplam_daire`
+sütunları **düşürülmez** — yalnızca okunmaz hâle gelir. Geri dönüş gerekirse veri
+yerinde durur.
+
+### Davranış değişikliği: kullanıcı silmek artık binayı silmiyor
+
+Eskiden `daireler.kullanici_id` üzerinde `ON DELETE CASCADE` bir yabancı anahtar
+vardı; bir kullanıcı silindiğinde daireleri, dolayısıyla aidat geçmişi de
+zincirleme siliniyordu. Yeni modelde daire siteye bağlıdır
+(`fk_daire_site … ON DELETE CASCADE`), kullanıcıya değil. `fk_daire_kullanici`
+kaldırıldı. Artık bir yöneticinin hesabını silmek yalnızca o kişinin erişimini
+sonlandırır; binanın verisi yerinde kalır ve başka bir kullanıcıya yetki
+verilebilir.
+
+Aynı göç `uq_kullanici_daire` benzersizlik kısıtını da kaldırıp yerine
+`uq_site_daire (site_id, daire_no)` koyar — yani aynı kullanıcı iki farklı sitede
+"Daire 1"e sahip olabilir, ki eski kısıt altında bu mümkün değildi.
+
+### Aktif site seçimi (güvenlik kontrolü)
+
+Oturumdaki aktif site `$_SESSION['aktif_site_id']` içinde tutulur, ancak bu değer
+**hiçbir zaman doğrudan güvenilmez**. Her istekte `giris_kontrol()` →
+`aktif_site_belirle()` çalışır ve istenen site id'si `kullanici_site_yetkileri`
+ile JOIN'lenerek doğrulanır:
+
+- Yetki yoksa istenen id yok sayılır, kullanıcının yetkili olduğu ilk siteye düşülür.
+- Hiç yetkisi yoksa oturum sonlandırılır.
+- Sayfalar `$kullanici['site_id']` kullanır; `$kullanici['id']` yalnızca kimlik içindir.
+
+`site_sec.php` (site değiştirme uç noktası) aynı doğrulamayı bir kez daha yapar
+(savunma katmanı), reddedilen denemeleri `site_degistirme_reddedildi` olarak
+denetim kaydına yazar ve `geri` parametresini yalnızca site içi göreli yollara
+kısıtlayarak açık yönlendirmeyi (open redirect) engeller.
+
+Site seçici arayüzde **yalnızca birden fazla siteye yetkili kullanıcıya**
+gösterilir; tek siteli kullanıcı için ekran hiç değişmez.
+
+### Blok yönetimi
+
+Bloklar `ayarlar.php` üzerinden eklenir/silinir; son blok silinemez. Blok
+seçimi `daireler.php` içindeki ekleme ve düzenleme formlarında yer alır ve
+`gecerli_blok_id()` ile doğrulanır — başka bir siteye ait blok id'si gönderilirse
+sessizce `NULL` yazılır, çapraz site referansı oluşmaz. Site tek bloklu ise
+daire listesinde blok sütunu gösterilmez.
+
+### Göç uygulanmadan önce
+
+`site_semasi_hazir_mi()` kontrolü sayesinde uygulama göç uygulanmadan da çalışır:
+eski `kullanici_id` tabanlı davranışa düşer, site seçici ve blok arayüzü gizlenir.
+Bu, "önce deploy, sonra göç" sırasının güvenli olmasını sağlar.
+
+## Platform Yönetimi (Süper Admin Paneli)
+
+> Göç: `semalar/004_platform_yonetimi.sql` · Panel: `/yonetim/`
+
+Bugüne kadar sistemde yalnızca **kiracı** düzeyi vardı: her yönetici kendi
+apartmanını görüyor, platformun tamamına bakan bir katman bulunmuyordu. Bir sorunu
+teşhis etmek, bir hesabı askıya almak ya da tanıtım sayfasındaki bir yazım hatasını
+düzeltmek için veritabanına elle girmek veya yeniden deploy etmek gerekiyordu.
+
+`/yonetim/` bu boşluğu dolduruyor. Site içi rollerden (`yonetici`/`muhasebe`/`denetci`)
+**bağımsız** bir platform rolü kullanır — ikisi karıştırılsaydı her apartman yöneticisi
+tüm apartmanların verisine erişir hale gelirdi.
+
+### Platform rolleri — `kullanicilar.platform_rolu`
+
+| Rol | Yetki |
+|---|---|
+| `kullanici` | Varsayılan. Panele erişemez. |
+| `destek` | Panele girer, her şeyi **görür**, hiçbir şeyi değiştiremez. |
+| `superadmin` | Tam yetki: ayarlar, içerik, göç, kimliğe bürünme. |
+
+Salt-okunurluk arayüzde düğme gizlemekle değil, `yonetim_kontrol(true)` bekçisiyle
+**sunucu tarafında** uygulanır: `destek` rolüyle gönderilen her POST 403 döner ve
+denetim kaydına yazılır.
+
+### İlk süper admin (yumurta-tavuk)
+
+Göç **hiç kimseye** süper admin yetkisi vermez — sessizce `id=1`'i yetkilendirseydi
+kimin ne zaman yetkilendiği denetlenemez olurdu. İlk atama bilinçli bir adımdır:
+
+```bash
+php araclar/superadmin_ata.php liste            # mevcut platform yetkilileri
+php araclar/superadmin_ata.php <kullanici_adi>  # süper admin yap
+php araclar/superadmin_ata.php <kullanici_adi> destek
+```
+
+SSH erişimi yoksa `/yonetim/kurulum.php` aynı işi yapar, ama **iki koşul birlikte**
+aranır: sistemde hiç süper admin olmamalı **ve** `config.php`'deki `GOC_ANAHTARI`
+bilinmeli. İlk atama yapıldığı anda sayfa kendini kapatır.
+
+Son süper adminin yetkisi ne panelden ne CLI'dan kaldırılabilir: panele girecek kimse
+kalmazdı ve rol atamak için de panel gerekirdi — sistem kendini kilitlerdi.
+
+### Zorunlu iki faktörlü doğrulama (TOTP)
+
+Panel tüm kiracıların mali ve kişisel verisine eriştiği için tek şifreyle korunması
+kabul edilmedi. `includes/totp.php` bağımlılıksız bir RFC 6238 uygulamasıdır
+(Google Authenticator, Authy, Microsoft Authenticator ile uyumlu; RFC test
+vektörlerine karşı doğrulanmıştır).
+
+- **2FA kurulu olmayan hesap panele alınmaz** — şifre doğru olsa bile.
+- Kurulum `/yonetim/iki_faktor.php` üzerinden yapılır ve bilinçli olarak **normal
+  uygulama oturumu** ister, panel oturumu değil: aksi halde 2FA'yı kurmak için panele,
+  panele girmek için 2FA'ya ihtiyaç duyulan kapalı bir döngü oluşurdu.
+- **Gizli anahtar, kullanıcı geçerli bir kod üretebildiğini kanıtlayana kadar
+  veritabanına yazılmaz.** Yanlış kurulmuş bir doğrulayıcı yüzünden hesap kilitlenmez.
+- **Tekrar kullanım engeli**: doğrulanan zaman adımı `totp_son_adim` sütununda saklanır;
+  aynı 6 haneli kod 30 saniyelik pencerede ikinci kez kabul edilmez.
+- **Yedek kodlar**: 8 adet tek kullanımlık kod üretilir, yalnızca bir kez gösterilir ve
+  veritabanında `password_hash()` ile saklanır. Telefon kaybedilirse tek kurtuluş yolu
+  budur; tükenirse bir başka süper admin panelden 2FA'yı sıfırlayabilir (bu yetki
+  **vermez**, yalnızca kaydı siler — kullanıcı kurulumu baştan yapmak zorundadır).
+
+**QR kodu neden yok:** QR üretmek ya harici bir servise başvurmayı (TOTP gizli
+anahtarını üçüncü tarafa göndermek — kabul edilemez) ya da projeye bir QR kütüphanesi
+eklemeyi gerektirirdi. Bunun yerine anahtar okunabilir bloklar hâlinde gösterilir; tüm
+doğrulayıcı uygulamalar "anahtarı elle gir" seçeneğini destekler.
+
+### Kullanıcı adına görüntüleme (impersonation)
+
+Sistemin en hassas yetkisi: bir süper admin herhangi bir yöneticinin ekranını olduğu
+gibi görebilir. Destek için gerekli — kullanıcı "bende şöyle görünüyor" dediğinde tek
+güvenilir yol — ama kötüye kullanımı tüm kiracıların verisini açar. Dört kural
+pazarlık dışıdır:
+
+1. **Varsayılan salt-okunur.** Yazma, `burunme_yazma_izni` platform ayarıyla ayrıca
+   açılır. Kontrol `giris_kontrol()` içindeki **tek bir noktadadır** (POST düzeyinde),
+   dolayısıyla yeni bir sayfa eklendiğinde koruma kendiliğinden geçerli olur —
+   tek tek hatırlanması gereken bir kontrol bırakılmaz.
+2. **Her şey denetim kaydına.** Başlangıç, bitiş ve süre yazılır; arada yapılan her
+   işlem `burunen_yonetici_id` ile etiketlenir — aksi halde denetim izi eylemi masum
+   kullanıcının üstüne yazardı.
+3. **Platform yetkilisinin adına bürünülemez.** Aksi halde bir `destek` hesabı bir
+   süper adminin adına bürünüp kendi rolünü yükseltebilirdi.
+4. **Kapatılamaz uyarı bandı.** Ekranın başkasının verisi olduğunu unutmak, yanlış
+   apartmanda işlem yapmakla sonuçlanır.
+
+Oturum modeli bunu mümkün kılan şeydir: `$_SESSION['yonetim_id']` (gerçek yönetici) ile
+`$_SESSION['kullanici_id']` (uygulamanın gördüğü kişi) **ayrı** anahtarlardır. Tek
+anahtar kullanılsaydı bürünme sırasında panel yetkisi de hedef kullanıcıya geçerdi.
+Bürünme başlarken yöneticinin kendi uygulama oturumu saklanır, bitince geri yüklenir.
+
+### Bakım modu
+
+Açıkken normal kullanıcı panele giremez; `503` ve `Retry-After` ile bir bakım sayfası
+görür. Platform yetkilileri erişmeye devam eder — aksi halde bakım modunu kapatacak
+kişi de dışarıda kalırdı. Tanıtım sayfası ve giriş ekranı etkilenmez.
+
+### Sistem duyuruları
+
+Panellerin üstünde bant olarak görünür. Tarih aralığı verilerek zamanlanabilir
+(`baslangic`/`bitis`) ve `site_id` ile tek bir apartmana hedeflenebilir; boş bırakılırsa
+tüm sitelere gider.
+
+### Tanıtım sayfası içerik yönetimi
+
+Hero metni, SEO künyesi ve SSS bugüne kadar `index.php` içine gömülüydü — bir yazım
+düzeltmesi için bile deploy gerekiyordu. Artık `icerik_bloklari` ve `sss_kayitlari`
+tablolarından okunur ve `/yonetim/icerik.php` üzerinden düzenlenir.
+
+- **Kayıt yoksa koddaki varsayılana düşülür** (`includes/tanitim_icerik.php`), yani
+  tablolar boş olsa da ya da göç uygulanmamış olsa da sayfa eksiksiz çizilir.
+- SSS içeriği hem sayfada hem `FAQPage` yapısal verisinde **tek kaynaktan** kullanılır;
+  HTML ile schema.org arasındaki uyuşmazlık Google tarafından cezalandırılır.
+- Hero başlığında `|` işareti satır sonudur; sonraki bölüm vurgu (degrade) rengiyle
+  çizilir. Ayraç yoksa başlık tek parça gösterilir.
+
+### Panel güvenlik önlemleri
+
+- **Ayrı giriş yolu** (`/yonetim/giris.php`), uygulama girişinden bağımsız.
+- **Hız sınırlama iki eksende**: IP başına 10/15 dk (dağıtık deneme) ve kullanıcı adı
+  başına 5/15 dk (tek hesaba yoğunlaşma).
+- **Hata mesajları hangi adımın yanlış olduğunu sızdırmaz**: "böyle bir kullanıcı yok",
+  "şifre yanlış" ve "bu hesabın panel yetkisi yok" durumlarının hepsi aynı mesajı verir
+  — kullanıcı adı sayımına ve rol keşfine kapalıdır.
+- **Rol her istekte veritabanından okunur**, oturumda saklanmaz: yetki geri alındığında
+  oturum anında düşer.
+- **İsteğe bağlı IP kısıtı** (tek IP veya CIDR). Kilitlenme koruması vardır: kendi IP
+  adresiniz listede değilse kayıt reddedilir. Dinamik IP kullanıyorsanız (çoğu ev
+  bağlantısı) bu kısıtı açmayın.
+- Tüm panel yanıtlarında `X-Robots-Tag: noindex, nofollow`.
+- **Denetim kaydı yalnızca okunur**: panelden silme veya düzenleme yolu bilinçli olarak
+  yoktur — silinebilen bir denetim izi denetim izi değildir.
+
+### Panelden göç çalıştırma
+
+`/yonetim/goc.php`, kök dizindeki `/goc.php` ile aynı işi farklı bir kapıdan yapar:
+orada `GOC_ANAHTARI` gerekir (henüz süper admin yokken), burada kimliği doğrulanmış bir
+süper admin oturumu yeterlidir. Yedek onay kutusu işaretlenmeden düğme çalışmaz —
+MySQL/MariaDB'de DDL transaction'a girmez, yarıda kalan bir göç geri alınamaz.
+
+## Operasyonel Modüller (Talep · Demirbaş/Bakım · Personel)
+
+> Göç: `semalar/005_operasyonel_moduller.sql`
+
+Üç modül aynı deseni paylaşır: site kapsamlı liste, blok/daire ilişkisi, dosya eki ve
+gider defteriyle bağlantı. Hepsi `site_id` ile filtrelenir; kiracı izolasyonu Faz 2'deki
+modelin aynısıdır.
+
+### Arıza / talep bildirimi — `talepler.php`
+
+**Tasarım kararı — talebi kim açar:** Sakin girişi henüz yok, bu yüzden talebi
+**yönetici veya personel** açar; telefonla ya da kapıda gelen arıza sisteme buradan
+girilir. Bu, bugünkü iş akışına uyar ve ayrı bir sakin portalı gerektirmez. Daire bazlı
+tokenli bağlantı (WhatsApp ile sakine gönderilen, girişsiz talep formu) sonraki bir
+aşamaya bırakıldı.
+
+- **Durum akışı:** Açık → İşlemde → Beklemede → Çözüldü → Kapalı (+ İptal)
+- **Kategoriler:** Asansör, su/tesisat, elektrik, ısıtma, temizlik, güvenlik, ortak alan, diğer
+- **Öncelik:** Düşük / Normal / Yüksek / Acil — liste öncelik sırasına göre dizilir
+- Her durum değişikliği `talep_yorumlari`'na `durum_eski`/`durum_yeni` ile yazılır;
+  "bu talep ne zaman kim tarafından çözüldü?" sorusu böyle cevaplanır
+- Fotoğraf ve belge eki, personel ataması, bildiren kişi kaydı
+- **Maliyet → gider:** girilen tutar gider defterine `TAMİRAT` kategorisiyle işlenir
+
+Açık talep sayısı dashboard'da uyarı kartı olarak görünür.
+
+### Demirbaş ve bakım — `demirbaslar.php`
+
+**Modülün asıl değeri envanter listesi değil, hatırlatmadır.** Asansör yıllık muayenesi,
+yangın tüpü dolum kontrolü, jeneratör ve paratoner ölçümü **yasal zorunluluktur**;
+kaçırılması yönetim için ciddi sorumluluk doğurur. Buna karşı iki mekanizma var:
+
+1. **Otomatik zincir.** Bir bakım "yapıldı" işaretlendiğinde, `periyot_ay` doluysa bir
+   sonraki planlı kayıt kendiliğinden oluşturulur. Yöneticinin her seferinde "bir
+   sonrakini de gireyim" demesi beklenirse kaçınılmaz olarak unutulur. Zincir yalnızca
+   duruma **geçişte** üretilir; aynı kayıt tekrar düzenlendiğinde ikinci bir kopya çıkmaz.
+2. **Hatırlatma.** Yaklaşan ve **geciken** bakımlar dashboard'da ve modül sayfasının
+   üstünde gösterilir. `araclar/bakim_hatirlatma.php` cron ile çalıştırılarak e-posta
+   gönderir — panele bakmayan yöneticiye de ulaşır.
+
+Geçmiş tarihli planlı bakımlar listeden **düşmez**: "tarihi geçti, artık gösterme"
+davranışı modülün amacını boşa çıkarırdı.
+
+```bash
+# cPanel cron — günde bir kez
+php /home/<kullanici>/public_html/araclar/bakim_hatirlatma.php --gun=14
+
+php araclar/bakim_hatirlatma.php --gun=30 --deneme   # göndermeden ne olacağını yazdırır
+```
+
+Aynı bakım için ikinci kez e-posta gönderilmez (`bakimlar.hatirlatma_gonderildi`).
+E-posta yalnızca **doğrulanmış** adresi olan site yöneticilerine gider; bir siteye ait
+tüm bakımlar tek iletide toplanır.
+
+**Yapılmış** bir bakımın tutarı gider defterine `BAKIM` kategorisiyle işlenir. Planlı
+(henüz yapılmamış) bir bakımın tahmini bedeli **giderlere girmez** — tahmini harcama
+gerçekleşmiş gibi görünmemeli.
+
+### Personel — `personel.php`
+
+- Görev (kapıcı, güvenlik, temizlik, teknisyen, bahçıvan, diğer), telefon, işe
+  başlama/ayrılma, aylık ücret
+- Ödeme türleri: maaş, avans, ikramiye, SGK primi, diğer
+- Personelin üstündeki açık talep sayısı listede görünür
+- Ayrılma tarihi girildiğinde durum otomatik "Ayrıldı" olur — ikisi ayrışırsa aktif
+  personel listesi ve aylık ücret yükü yanlış hesaplanırdı
+
+**KVKK notu:** Kimlik numarası, SGK sicili gibi alanlar **bilinçli olarak
+toplanmıyor.** Bunlar özel nitelikli kişisel veri kategorisine girer; aidat takibi için
+gerekmiyor. Toplanacaksa erişim kısıtı ve saklama süresi ayrıca tanımlanmalıdır.
+
+### Gider entegrasyonu — çift sayım nasıl önleniyor
+
+Bakım tutarı, personel ödemesi ve talep maliyeti hem kendi modülünde hem gider
+defterinde görünmeli, ama **aynı para iki kez sayılmamalı.** Çözüm:
+
+- Kayıt oluşturulduğunda otomatik bir gider satırı üretilir; iki kayıt
+  `giderler.kaynak_tur` + `kaynak_id` ve kaynak tablodaki `gider_id` ile **karşılıklı**
+  bağlanır.
+- Bu satır **giderler ekranından silinemez ve düzenlenemez** — düğmeler gizlenmekle
+  kalmaz, sorgular da `kaynak_tur IS NULL` koşuluyla korunur, yani adres çubuğundan
+  zorlanamaz. Onun yerine kaynak kayda giden bir bağlantı gösterilir.
+- Kaynak kayıt silinince bağlı gider satırı da silinir. Tutar sıfırlanır/boşaltılırsa
+  gider satırı kaldırılır; değiştirilirse güncellenir (yeni satır açılmaz).
+
+`kaynak_tur` NULL olan satırlar elle girilmiş normal giderlerdir ve eskisi gibi
+düzenlenip silinebilir.
+
+### Dosya ekleri
+
+Yüklenen fotoğraf, fatura ve rapor belgeleri `includes/dosya.php` üzerinden **web
+kökünün dışında** saklanır (`DOSYA_KOK`, varsayılan olarak `public_html`'in bir üstü).
+Veritabanında yalnızca göreli yol ve künye tutulur.
+
+- İndirme tek kapıdan yapılır: `belge_indir.php?id=` önce oturumu, sonra dosyanın
+  **aktif siteye ait olduğunu** doğrular. Ek id'leri ardışık olduğu için başka bir
+  apartmanın faturasını id tahminiyle indirme denemesi beklenmelidir; sorgu `site_id`
+  ile filtrelendiğinden böyle bir istek 404 alır ve denetim kaydına yazılır.
+- Yetkisiz erişim ile "gerçekten yok" ayrımı yapılmaz — aksi halde hangi id'lerin var
+  olduğu sayılabilirdi.
+- Dosya her zaman **ek olarak** indirilir (`Content-Disposition: attachment` +
+  `nosniff`): yüklenmiş bir HTML/SVG'nin tarayıcıda çalıştırılıp oturum çalmasını önler.
+- Uzantıya tek başına güvenilmez: `finfo` ile gerçek içerik türü okunur ve uzantıyla
+  eşleşmesi aranır, dosya adı diskte yeniden üretilir. `fatura.php.jpg` gibi dosyalar
+  reddedilir.
+- Bir kayıt silindiğinde ekleri **diskten de** silinir; FK cascade yalnızca veritabanı
+  satırını kaldırır.
+
+### Çapraz site referansı koruması
+
+Talebin dairesi/personeli, demirbaşın bloğu gibi yabancı anahtarlar formdan gelir ve
+`site_kaydi_gecerli_mi()` / `gecerli_blok_id()` ile doğrulanır. Başka bir apartmana ait
+bir id gönderilirse sessizce `NULL` yazılır — kayıt oluşur ama çapraz site bağlantısı
+kurulmaz.
+
+### Göç uygulanmadan önce
+
+`operasyon_semasi_hazir_mi()` kontrolü sayesinde uygulama göç 005 uygulanmadan da
+çalışır: üç modül menüde görünmez, doğrudan açılırsa bilgilendirme gösterir, gider
+ekranı eski davranışına döner.
+
+## Karar Defteri, Belge Arşivi ve Resmi Bilanço
+
+> Göç: `semalar/006_karar_belge_bilanco.sql`
+
+### ⚖️ Yasal kapsam — iki uyarı, arayüzde de kalıcı
+
+**Karar defteri:** Kat Mülkiyeti Kanunu'na göre karar defteri **noter tasdikli fiziksel
+defter** olarak tutulur. `kararlar.php` ve `belgeler.php` bu yasal aslın **yerine
+geçmez**; amacı dijital arşiv ve geçmiş kararlara hızlı erişimdir. Bu uyarı her iki
+sayfanın üstünde kapatılamaz bir bant olarak durur — bilinçli tasarım: bir kez
+kapatılıp unutulursa uyarının amacı kaybolur.
+
+**Resmi bilanço:** Bu rapor mali müşavir görüşü alınmadan tasarlandı. Kat Mülkiyeti
+Kanunu'nun yöneticiye yüklediği hesap verme yükümlülüğünü (m.33, m.39) karşılamayı
+**hedefler**; kesin format için bir mali müşavire teyit ettirilmesi önerilir. Aynı uyarı
+`bilanco.php` ekranında ve `print_bilanco.php` çıktısının imza alanının hemen üstünde
+de yer alır.
+
+### Karar defteri — `kararlar.php`
+
+- Karar no (`<yıl>/<sıra>` biçiminde otomatik önerilir, site içinde benzersizdir,
+  isteğe göre elle değiştirilebilir — mevcut fiziksel defterin numaralandırmasına
+  uymak isteyenler için)
+- Toplantı türü (olağan/olağanüstü genel kurul, yönetim kurulu, diğer), tarih, katılım
+  oranı, lehte/aleyhte/çekimser sayıları
+- Karara belge eklenebilir (toplantı tutanağı taraması, imza listesi vb.)
+- **Karar silinirse bağlı belgeler arşivde kalır** — yalnızca karar bağlantısı
+  (`belgeler.karar_id`) `NULL`'a döner (`ON DELETE SET NULL`). Bir toplantı tutanağı
+  taraması, kararın kendisi hatalı girilip silinse bile arşiv değeri taşımaya devam eder.
+- Yıla, toplantı türüne göre filtreleme; karar no/başlık/karar metninde arama
+
+### Belge arşivi — `belgeler.php`
+
+Karara bağlı olmayan belgeler (yönetim planı, sözleşme, sigorta poliçesi, ruhsat, bakım
+raporu) burada yönetilir. Aynı ekrandan yükleme sırasında isteğe bağlı olarak bir
+karara da bağlanabilir — `kararlar.php` ile `belgeler.php` aynı tabloyu (`belgeler`)
+paylaşır, yalnızca giriş noktaları farklıdır.
+
+Dosyalar `includes/dosya.php` üzerinden **web kökünün dışında** saklanır; indirme
+`belge_indir.php?kaynak=belge&id=` üzerinden yapılır. `belge_indir.php` Faz 4'ün `ekler`
+tablosuyla da çalışır (`kaynak=ek`, varsayılan — geriye dönük uyumluluk için parametre
+olmadan da çalışır); iki farklı tablo, tek bekçi betiğinden aktif siteye göre
+doğrulanarak sunulur.
+
+### Aidat dışı gelirler — `gelirler.php`
+
+Sistemde bugüne kadar tek gelir kaynağı aidattı. Kira (çatı/cephe/dükkân), gecikme
+cezası, bağış ve demirbaş satışı gibi gelirler kayda **giremiyordu** — bu, resmi
+bilanço raporunun önkoşuluydu. `giderler.php`'nin gelir yönündeki karşılığıdır; aynı
+desende (tür, açıklama, tutar, tarih → dönem, dekont no) tutulur.
+
+### Resmi bilanço / yıl sonu kapanışı — `bilanco.php`
+
+**Önce eksik veri modeli tamamlandı, sonra rapor yazıldı.** Bir bilanço "devreden
+bakiye + gelirler − giderler = dönem sonu bakiye" formülüne dayanır; açılış bakiyesi
+(`donem_acilis_bakiye`) ve aidat dışı gelirler (`gelirler`) olmadan bu formül eksik
+kalırdı — göç 006'nın asıl işi bu iki tabloyu eklemekti.
+
+**Rapor içeriği** (`includes/mali_yil.php` → `yillik_ozet()`):
+- Açılış bakiyesi + toplam gelir (aidat + diğer, tür kırılımlı) − toplam gider
+  (kategori kırılımlı) = dönem sonu bakiye
+- Daire bazlı borç listesi (ödenmemiş dönemlerin toplamı)
+- Tahsilat oranı
+- Önceki yılla gider karşılaştırması (yüzde fark)
+- A4'e optimize, imza alanlı çıktı (`print_bilanco.php`) — mevcut yazdırma altyapısı
+  (`includes/print_utils.php`) genişletilerek kullanıldı
+
+**"Alacak" (fazla ödeme) hesaplanmaz:** `aidatlar` tablosu dönem başına tek bir
+tutar/durum tutar; kısmi veya fazla ödeme kavramı sistemde yok. Borç listesi yalnızca
+ödenmemiş dönemlerin toplamıdır. Bu, mevcut veri modelinin bir sınırıdır ve rapor
+ekranında gizlenmez.
+
+**Yıl kapatma zinciri:** "`<yıl>` Yılını Kapat" düğmesi, o yılın dönem sonu bakiyesini
+otomatik olarak bir sonraki yılın açılış bakiyesi yapar. Devir bakiyesini elle taşımak
+hataya açıktır (aynı rakamın iki yerde farklı girilmesi gibi); bu düğme zinciri kurar.
+**Sonraki yılın açılışı zaten elle girilmişse üzerine YAZILMAZ** — düğme arayüzde
+devre dışı bırakılır ve nedeni açıklanır; kapanış işlemi geri alınabilir olmalı ve elle
+yapılmış bir düzeltmeyi sessizce ezmemelidir. Üzerine yazmak isteniyorsa hedef yıl
+seçilip açılış bakiyesi doğrudan güncellenebilir.
+
+### Göç uygulanmadan önce
+
+`arsiv_semasi_hazir_mi()` ve `bilanco_semasi_hazir_mi()` kontrolleri sayesinde
+uygulama göç 006 uygulanmadan da çalışır: dört modül (kararlar, belgeler, gelirler,
+bilanço) menüde görünmez, doğrudan açılırsa bilgilendirme gösterir.
+
 ## Güvenlik Notları
 
 - Tüm veritabanı sorguları PDO prepared statement kullanır; ham SQL birleştirmesi yoktur.
@@ -127,12 +619,147 @@ kategori, o kullanıcının `gider_kategorileri` tablosundaki kişisel listesine
 - Oturum, 5 dakika hareketsizlikte otomatik sonlanır (`SESSION_SURE`, `config.php`). "Beni Hatırla" işaretlenerek girilen oturumlar bu sınırdan etkilenmez — bkz. aşağıdaki "Beni Hatırla" bölümü.
 - Tüm sayfa yanıtlarına `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` ve temel bir `Content-Security-Policy` (frame-ancestors) header'ı eklenir.
 - Veritabanı bağlantı hataları kullanıcıya detay sızdırmaz; hata sunucu log'una (`error_log`) yazılır, kullanıcıya jenerik bir mesaj gösterilir.
-- Her sorgu oturum sahibinin `kullanici_id` değeriyle filtrelenir; kiracılar (apartmanlar) arası veri sızıntısını önlemek için bu izolasyon tüm modüllerde korunmalıdır.
+- Her sorgu **aktif sitenin** `site_id` değeriyle filtrelenir (`$kullanici['site_id']`); aktif site her istekte `kullanici_site_yetkileri` üzerinden yeniden doğrulanır, oturumdaki değere güvenilmez. Kiracılar (binalar) arası veri sızıntısını önlemek için bu izolasyon tüm modüllerde korunmalıdır — bkz. "Kimlik, Site ve Blok Modeli".
+- Kullanıcıya ait olmayan bir kayda id ile doğrudan erişim denemesi (`daire_detay.php?id=…`, `daire_print.php?id=…`) sorgu düzeyinde `site_id` filtresine takılır; yetkisiz istek veri döndürmez.
+- Platform yönetim paneli (`/yonetim/`) ayrı bir giriş yolu, zorunlu TOTP, iki eksenli hız sınırlama ve isteğe bağlı IP kısıtı ile korunur; her panel işlemi denetim kaydına yazılır — bkz. "Platform Yönetimi".
+- Yüklenen dosyalar web kökünün dışında saklanır ve yalnızca `belge_indir.php` üzerinden, aktif site doğrulandıktan sonra sunulur; gerçek MIME kontrolü uzantıya güvenmez — bkz. "Operasyonel Modüller".
+- Formdan gelen yabancı anahtarlar (daire, personel, blok, karar) ait oldukları siteye karşı doğrulanır; başka bir apartmanın kaydına referans verilemez.
+- Karar defteri ve resmi bilanço ekranlarında, bu modüllerin yasal aslın/mali müşavir onayının yerine geçmediğini hatırlatan kapatılamaz bir uyarı bandı bulunur — bkz. "Karar Defteri, Belge Arşivi ve Resmi Bilanço".
 
 **Bilinen sınırlamalar / öneriler:**
-- Giriş formunda kaba kuvvet (brute-force) koruması (deneme sınırı, kilitleme, CAPTCHA) bulunmuyor.
-- Şifre sıfırlama (e-posta ile) akışı yok.
+- Uygulama giriş formunda (`login.php`) kaba kuvvet koruması yok; hız sınırlama şimdilik yalnızca şifre sıfırlama ve yönetim panelinde uygulanıyor.
+- ~~Şifre sıfırlama (e-posta ile) akışı yok.~~ → Eklendi, bkz. "Şifre Sıfırlama & E-posta Doğrulama".
 - Minimum şifre uzunluğu 6 karakterdir, karmaşıklık zorunluluğu yoktur.
+- İki faktörlü doğrulama yalnızca platform yetkilileri için zorunludur; normal kullanıcılara henüz sunulmuyor (altyapı `includes/totp.php` içinde hazır).
+
+## Şema Göçü (Migration)
+
+Proje başlangıçta "kendi kendini onaran" tablolar kullanıyordu (`CREATE TABLE IF NOT
+EXISTS`). Bu, yeni tablo eklemek için yeterli ama **var olan tabloyu değiştirmek**
+(`ALTER TABLE`, veri taşıma) için değil. Bu yüzden sürümlenmiş bir göç sistemi eklendi.
+
+- Göçler `semalar/NNN_aciklama.sql` dosyalarıdır, numara sırasıyla uygulanır.
+- Uygulananlar `sema_surumu` tablosuna yazılır; aynı göç iki kez çalıştırılmaz.
+- Göç dosyaları MariaDB'nin `ADD COLUMN IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS`
+  sözdizimini kullanır — böylece yarıda kalan bir göç tekrar çalıştırılabilir.
+
+**Çalıştırma:**
+
+```bash
+php araclar/goc_cli.php durum     # bekleyenleri listele
+php araclar/goc_cli.php uygula    # bekleyenleri uygula
+```
+
+SSH erişimi yoksa `https://<alan-adiniz>/goc.php` üzerinden de çalıştırılabilir;
+`config.php` içindeki `GOC_ANAHTARI` gerekir (anahtar POST gövdesinde taşınır, URL'de
+değil — aksi halde sunucu erişim günlüklerine düz metin yazılırdı).
+
+> ⚠️ **Göç öncesi veritabanı yedeği alın.** MySQL/MariaDB'de DDL işlemleri geri
+> alınamaz (transaction'a girmez); yarıda kalan bir göç elle temizlenmek zorunda
+> kalınabilir.
+
+### Dağıtım (deploy) sırası — önemli
+
+`config.php` sunucuya **deploy edilmez**, dolayısıyla koda eklenen yeni ayar sabitleri
+sunucudaki eski config'de bulunmaz. `includes/varsayilanlar.php` bu sabitlere güvenli
+varsayılan vererek "undefined constant" ölümcül hatasını önler; ilgili özellik
+yapılandırılana kadar sessizce devre dışı kalır.
+
+Aynı şekilde uygulama, göç uygulanmadan da çalışır. Üç ayrı hazırlık kontrolü var ve
+her biri ilgili özelliği sessizce devre dışı bırakıp sistemin geri kalanını ayakta
+tutar:
+
+| Kontrol | Göç | Uygulanmadığında |
+|---|---|---|
+| `eposta_semasi_hazir_mi()` | 001 | E-posta arayüzü ve şifre sıfırlama gizlenir |
+| `site_semasi_hazir_mi()` | 003 | Eski tek-site davranışına düşülür; site seçici ve blok arayüzü gizlenir |
+| `platform_semasi_hazir_mi()` | 004 | Yönetim paneli erişilemez; tanıtım sayfası koddaki varsayılan metinleri kullanır |
+| `operasyon_semasi_hazir_mi()` | 005 | Talep/demirbaş/personel modülleri menüde görünmez; gider ekranı eski davranışına döner |
+| `arsiv_semasi_hazir_mi()` | 006 | Karar defteri ve belge arşivi menüde görünmez |
+| `bilanco_semasi_hazir_mi()` | 006 | Gelirler ve bilanço menüde görünmez |
+
+Doğru sıra:
+
+1. Dosyaları dağıt (deploy)
+2. `goc.php` veya `araclar/goc_cli.php` ile göçleri uygula
+3. `config.php`'ye SMTP ayarlarını gir
+4. `php araclar/superadmin_ata.php <kullanici_adi>` ile ilk süper adminı ata
+5. O hesapla `/yonetim/iki_faktor.php` üzerinden 2FA'yı kur ve yedek kodları sakla
+6. Bakım hatırlatma için cron tanımla: `php araclar/bakim_hatirlatma.php --gun=14` (günde bir kez)
+
+## E-posta Yapılandırması (SMTP)
+
+Şifre sıfırlama e-postaları **kimliği doğrulanmış SMTP** ile gönderilir. PHP'nin
+`mail()` fonksiyonu kullanılmaz: paylaşımlı hostingde kimlik doğrulaması yapmadan
+gönderdiği için iletiler büyük oranda spam'e düşer ve sıfırlama akışı işlevsiz kalır.
+
+Sunucudaki `config.php` dosyasına eklenmesi gerekenler:
+
+```php
+define('SMTP_HOST', 'mail.alanadiniz.com');
+define('SMTP_PORT', 587);                   // 587 (TLS) veya 465 (SSL)
+define('SMTP_KULLANICI', 'noreply@alanadiniz.com');
+define('SMTP_SIFRE', '...');
+define('SMTP_GUVENLIK', 'tls');             // tls | ssl | yok
+define('EPOSTA_GONDEREN', 'noreply@alanadiniz.com');
+define('SITE_ADRESI', 'https://ays.alanadiniz.com');
+```
+
+Bu değerler boş bırakılırsa sistem çalışmaya devam eder; e-posta özellikleri
+"yapılandırılmamış" olarak işaretlenir ve arayüzde bu bilgi gösterilir.
+
+> ⚠️ **SMTP tek başına yetmez.** Alan adına **SPF** ve **DKIM** DNS kayıtları
+> eklenmezse Gmail/Outlook iletileri yine spam'e atabilir. Bu bir DNS yapılandırması
+> işidir, kod işi değil.
+
+Gönderim sonuçları `eposta_kaydi` tablosuna yazılır ("e-posta gelmedi" şikayetini
+teşhis edebilmek için); jeton, bağlantı veya şifre gibi gizli içerik **saklanmaz**.
+
+## Şifre Sıfırlama & E-posta Doğrulama
+
+**Ön koşul — e-posta toplama:** Bu özellik eklenene kadar sistemde kullanıcı e-postası
+hiç toplanmıyordu (`kullanicilar` tablosunda sütun yoktu). Bu yüzden:
+
+- Yeni kayıtlarda e-posta **zorunlu** alandır ve doğrulama bağlantısı otomatik gönderilir.
+- Mevcut kullanıcılara panelde kapatılabilir bir uyarı bandı gösterilir; adreslerini
+  Ayarlar → E-posta Adresi bölümünden ekleyebilirler.
+
+**Güvenlik tasarımı:**
+
+- Sıfırlama bağlantısı **yalnızca doğrulanmış** adrese gönderilir. Doğrulanmamış bir
+  adres yazım hatası olabilir; bağlantı yabancı birinin gelen kutusuna giderse hesap
+  ele geçirilebilirdi.
+- `sifre_unuttum.php`, adres kayıtlı olsun ya da olmasın **aynı mesajı** gösterir —
+  aksi halde form, hangi e-postaların sistemde olduğunu keşfetmek için kullanılabilirdi.
+- Jetonlar `hatirlama_jetonlari` ile aynı **selector/validator** desenini kullanır:
+  bağlantıda açık duran seçici ile satır bulunur, gizli doğrulayıcı ise veritabanına
+  asla düz metin yazılmaz (yalnızca SHA-256 hash'i, `hash_equals` ile karşılaştırılır).
+- Jetonlar **tek kullanımlıktır**; kullanıldığında aynı kullanıcının bekleyen diğer
+  jetonları da iptal edilir. Sıfırlama 1 saat, doğrulama 48 saat geçerlidir.
+- Şifre değiştiğinde **tüm "Beni Hatırla" oturumları düşürülür** — şifre ele geçirildiği
+  için sıfırlanıyor olabilir, saldırganın açık kalan kalıcı oturumu da kapanmalıdır.
+- Şifre değişiminde kullanıcıya bilgilendirme e-postası gider (hesap ele geçirme erken
+  uyarısı).
+- Hız sınırlama: adres başına 15 dakikada 3, IP başına 15 dakikada 10 istek. Aksi halde
+  bu form başkasının gelen kutusuna spam göndermek için kullanılabilirdi.
+
+## Denetim Kaydı, Hız Sınırlama ve Dosya Saklama
+
+Faz 3'te gelecek süper admin panelinin gerektirdiği altyapılar; şimdilik kimlik
+olaylarında kullanılıyor.
+
+- **`denetim_kaydi`**: kim, ne zaman, hangi eylemi yaptı (giriş, şifre sıfırlama,
+  e-posta doğrulama, göç çalıştırma, yetkisiz göç denemesi). Denetim yazımı ana işlemi
+  asla bozmaz — tablo yoksa veya yazma başarısız olursa sessizce yutulur.
+- **`hiz_limiti`**: kayan pencere sayacı. Veritabanı tabanlı olması bilinçli; paylaşımlı
+  hostingde APCu/Redis garanti değildir.
+- **`includes/dosya.php`**: Faz 4/5'teki belge, fatura ve fotoğraf yüklemeleri için.
+  Dosyalar **web kökünün dışında** (`DOSYA_KOK`, varsayılan olarak `public_html`'in bir
+  üstü) saklanır ve yalnızca yetki kontrolü yapan bir bekçi betiği üzerinden sunulur —
+  içerik kişisel ve mali veri barındırdığı için doğrudan URL ile erişilebilir olmamalıdır.
+  Uzantıya tek başına güvenilmez: `finfo` ile gerçek içerik türü doğrulanır (sahte MIME
+  başlığıyla gönderilen `.php` içerikli "PDF" reddedilir) ve disktaki dosya adı yeniden
+  üretilir.
 
 ## Oturum Süresi & "Beni Hatırla"
 

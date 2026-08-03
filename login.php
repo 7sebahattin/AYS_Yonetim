@@ -5,6 +5,7 @@
 // ============================================================
 require_once 'config.php';
 require_once 'includes/functions.php';
+require_once 'includes/kimlik.php';
 oturum_baslat();
 oturumu_hatirlama_ile_dene();
 
@@ -48,6 +49,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['toplam_daire']  = $k['toplam_daire'];
                 $_SESSION['tema']          = $k['tema'] ?? 'koyu';
                 $_SESSION['son_islem']     = time();
+                // Aktif site her girişte yeniden belirlenir (giris_kontrol()
+                // içinde yetki doğrulamasıyla); önceki oturumdan kalan seçim
+                // taşınmasın.
+                unset($_SESSION['aktif_site_id']);
 
                 if (!empty($_POST['beni_hatirla'])) {
                     hatirlama_jetonu_baslat((int)$k['id']);
@@ -56,6 +61,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Log kaydet
                 db()->prepare("INSERT INTO oturum_loglari (kullanici_id, ip_adresi) VALUES (?, ?)")
                     ->execute([$k['id'], $_SERVER['REMOTE_ADDR'] ?? '']);
+
+                // son_giris, platform panelindeki "aylık aktif kullanıcı"
+                // ve site listesindeki "son giriş" sütununu besler.
+                // Sütun göç 004 ile geldiği için ayrı ve hatası yutulan
+                // bir sorgu: göç uygulanmamış sunucuda giriş bozulmasın.
+                if (platform_semasi_hazir_mi()) {
+                    try {
+                        db()->prepare("UPDATE kullanicilar SET son_giris = NOW() WHERE id = ?")
+                            ->execute([$k['id']]);
+                    } catch (Throwable $ex) {
+                        error_log('son_giris güncellenemedi: ' . $ex->getMessage());
+                    }
+                }
+                denetim_yaz('giris_basarili', 'kullanici', (int)$k['id'], [], (int)$k['id']);
 
                 header('Location: /dashboard.php');
                 exit;
@@ -68,13 +87,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ── Kayıt ────────────────────────────────────────────────
     if ($islem === 'kayit') {
         $kullanici_adi  = trim($_POST['kullanici_adi'] ?? '');
+        $eposta         = trim($_POST['eposta'] ?? '');
         $sifre          = $_POST['sifre'] ?? '';
         $sifre2         = $_POST['sifre2'] ?? '';
         $apartman_adi   = buyuk($_POST['apartman_adi'] ?? '');
         $toplam_daire   = max(1, min(200, (int)($_POST['toplam_daire'] ?? 10)));
+        $eposta_alinsin = eposta_semasi_hazir_mi();
 
         if (!$kullanici_adi || !$sifre || !$apartman_adi) {
             $hata = 'Tüm zorunlu alanları doldurun.';
+        } elseif ($eposta_alinsin && !filter_var($eposta, FILTER_VALIDATE_EMAIL)) {
+            $hata = 'Geçerli bir e-posta adresi girin.';
         } elseif (strlen($sifre) < 6) {
             $hata = 'Şifre en az 6 karakter olmalıdır.';
         } elseif ($sifre !== $sifre2) {
@@ -85,29 +108,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Kullanıcı adı müsait mi?
             $stmt = db()->prepare("SELECT id FROM kullanicilar WHERE kullanici_adi = ?");
             $stmt->execute([$kullanici_adi]);
+            $eposta_dolu = false;
+            if ($eposta_alinsin) {
+                $es = db()->prepare("SELECT id FROM kullanicilar WHERE eposta = ?");
+                $es->execute([$eposta]);
+                $eposta_dolu = (bool)$es->fetch();
+            }
+
             if ($stmt->fetch()) {
                 $hata = 'Bu kullanıcı adı zaten kullanımda.';
+            } elseif ($eposta_dolu) {
+                $hata = 'Bu e-posta adresi zaten kayıtlı.';
             } else {
                 $pdo = db();
                 $pdo->beginTransaction();
                 try {
                     // Kullanıcı oluştur
-                    $pdo->prepare("INSERT INTO kullanicilar (kullanici_adi, sifre_hash, apartman_adi, toplam_daire)
-                                   VALUES (?, ?, ?, ?)")
-                        ->execute([$kullanici_adi, password_hash($sifre, PASSWORD_DEFAULT),
-                                   $apartman_adi, $toplam_daire]);
+                    if ($eposta_alinsin) {
+                        $pdo->prepare("INSERT INTO kullanicilar (kullanici_adi, eposta, sifre_hash, apartman_adi, toplam_daire)
+                                       VALUES (?, ?, ?, ?, ?)")
+                            ->execute([$kullanici_adi, $eposta, password_hash($sifre, PASSWORD_DEFAULT),
+                                       $apartman_adi, $toplam_daire]);
+                    } else {
+                        $pdo->prepare("INSERT INTO kullanicilar (kullanici_adi, sifre_hash, apartman_adi, toplam_daire)
+                                       VALUES (?, ?, ?, ?)")
+                            ->execute([$kullanici_adi, password_hash($sifre, PASSWORD_DEFAULT),
+                                       $apartman_adi, $toplam_daire]);
+                    }
                     $yeni_id = (int)$pdo->lastInsertId();
 
-                    // Daireları oluştur
-                    $ins = $pdo->prepare("INSERT INTO daireler (kullanici_id, daire_no, aylik_aidat) VALUES (?, ?, 500)");
-                    for ($i = 1; $i <= $toplam_daire; $i++) {
-                        $ins->execute([$yeni_id, $i]);
+                    if (site_semasi_hazir_mi()) {
+                        // Site kaydı + kullanıcının bu siteye yönetici yetkisi + varsayılan blok
+                        $pdo->prepare("INSERT INTO siteler (ad, adres, telefon, toplam_daire) VALUES (?, NULL, NULL, ?)")
+                            ->execute([$apartman_adi, $toplam_daire]);
+                        $site_id = (int)$pdo->lastInsertId();
+
+                        $pdo->prepare("INSERT INTO kullanici_site_yetkileri (kullanici_id, site_id, rol) VALUES (?, ?, 'yonetici')")
+                            ->execute([$yeni_id, $site_id]);
+
+                        $pdo->prepare("INSERT INTO bloklar (site_id, ad, sira) VALUES (?, 'Ana Blok', 1)")
+                            ->execute([$site_id]);
+                        $blok_id = (int)$pdo->lastInsertId();
+
+                        $ins = $pdo->prepare("INSERT INTO daireler (site_id, blok_id, daire_no, aylik_aidat) VALUES (?, ?, ?, 500)");
+                        for ($i = 1; $i <= $toplam_daire; $i++) {
+                            $ins->execute([$site_id, $blok_id, $i]);
+                        }
+                    } else {
+                        // Göç 003 uygulanmamış → eski (tek site) davranışı
+                        $ins = $pdo->prepare("INSERT INTO daireler (kullanici_id, daire_no, aylik_aidat) VALUES (?, ?, 500)");
+                        for ($i = 1; $i <= $toplam_daire; $i++) {
+                            $ins->execute([$yeni_id, $i]);
+                        }
                     }
                     $pdo->commit();
-                    $basari = 'Kaydınız oluşturuldu! Giriş yapabilirsiniz.';
+
+                    // Doğrulama e-postası, kayıt işlemi başarıyla tamamlandıktan
+                    // SONRA gönderilir: SMTP yavaş/erişilemez olsa bile kayıt
+                    // geri alınmaz, kullanıcı hesabına sahip olur.
+                    if ($eposta_alinsin && eposta_yapilandirildi_mi()) {
+                        eposta_dogrulama_gonder($yeni_id, $eposta);
+                    }
+                    denetim_yaz('kayit_olusturuldu', 'kullanici', $yeni_id, [], $yeni_id);
+
+                    $basari = $eposta_alinsin
+                        ? 'Kaydınız oluşturuldu! E-posta adresinize doğrulama bağlantısı gönderildi. Giriş yapabilirsiniz.'
+                        : 'Kaydınız oluşturuldu! Giriş yapabilirsiniz.';
                     $mod = 'giris';
                 } catch (Exception $ex) {
                     $pdo->rollBack();
+                    error_log('Kayıt hatası: ' . $ex->getMessage());
                     $hata = 'Kayıt sırasında hata oluştu. Lütfen tekrar deneyin.';
                 }
             }
@@ -176,10 +246,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <label>Şifre</label>
       <input type="password" name="sifre" class="input" placeholder="••••••••" required>
     </div>
-    <label class="checkbox-row">
-      <input type="checkbox" name="beni_hatirla" value="1">
-      <span>Beni Hatırla</span>
-    </label>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <label class="checkbox-row" style="margin:0">
+        <input type="checkbox" name="beni_hatirla" value="1">
+        <span>Beni Hatırla</span>
+      </label>
+      <a href="/sifre_unuttum.php" style="font-size:12.5px;color:var(--muted)">Şifremi unuttum</a>
+    </div>
     <button type="submit" class="btn btn-primary btn-block">Giriş Yap</button>
   </form>
 
@@ -193,6 +266,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <input type="text" name="kullanici_adi" class="input" placeholder="harf_rakam_alt_cizgi"
              value="<?= e($_POST['kullanici_adi'] ?? '') ?>" required pattern="[a-zA-Z0-9_]+">
     </div>
+    <?php if (eposta_semasi_hazir_mi()): ?>
+    <div class="form-group">
+      <label>E-posta Adresi <span class="req">*</span></label>
+      <input type="email" name="eposta" class="input" placeholder="ornek@mail.com"
+             value="<?= e($_POST['eposta'] ?? '') ?>" required>
+      <small style="font-size:11.5px;color:var(--muted);line-height:1.5">
+        Şifrenizi unutursanız hesabınızı bu adresle kurtarırsınız.
+      </small>
+    </div>
+    <?php endif; ?>
     <div class="form-group">
       <label>Apartman Adı <span class="req">*</span></label>
       <input type="text" name="apartman_adi" class="input buyuk" placeholder="örn: Gül Apartmanı"

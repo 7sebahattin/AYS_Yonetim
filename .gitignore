@@ -1,3 +1,12 @@
 error_log
+
+# Veritabanı dökümleri repoya girmemeli (gerçek sakin/mali veri içerir).
 *.sql
+# ...ancak şema göçleri kodun parçasıdır ve deploy edilmeleri gerekir.
+!semalar/*.sql
+
 .well-known/
+
+# Yüklenen belgeler web kökünün dışında saklanır; yine de yanlışlıkla
+# repo içine düşerse commit edilmesin.
+ays_dosyalar/

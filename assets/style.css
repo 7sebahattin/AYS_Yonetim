@@ -506,3 +506,140 @@ body[data-theme="acik"] .donem-highlight {
     color: var(--accent) !important;
     font-weight: 700 !important;
 }
+/* ============================================================
+   FAZ 4 — OPERASYONEL MODÜLLER
+   Talep, demirbaş/bakım ve personel ekranlarının paylaştığı
+   bileşenler. Mevcut değişkenleri (--card, --border, --muted)
+   kullanır; açık tema kuralları sonda toplanmıştır.
+   ============================================================ */
+
+/* ── Dashboard operasyonel uyarı kartları ────────────────── */
+.ops-uyari-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+.ops-uyari {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; border-radius: 12px;
+    background: color-mix(in srgb, var(--ops-renk) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ops-renk) 32%, transparent);
+    border-left: 4px solid var(--ops-renk);
+    text-decoration: none; color: inherit;
+    /* dokunmatik hedef */
+    min-height: 64px;
+}
+.ops-uyari:active { transform: scale(.99); }
+.ops-ikon { font-size: 24px; flex-shrink: 0; }
+.ops-uyari strong { display: block; color: var(--ops-renk); font-size: 15px; }
+.ops-uyari small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+/* color-mix desteklemeyen eski tarayıcılarda kart görünmez olmasın */
+@supports not (background: color-mix(in srgb, red 10%, transparent)) {
+    .ops-uyari { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.12); }
+}
+
+/* ── Filtre çubuğu ───────────────────────────────────────── */
+.filtre-cubugu {
+    display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.filtre-cubugu .input { width: auto; min-width: 170px; }
+
+/* ── Geniş modal (detay ekranları) ───────────────────────── */
+.modal-lg { max-width: 820px; }
+.modal-body {
+    padding: 0 22px;
+    /* Uzun içerik modalı taşırmasın; başlık ve alt çubuk sabit kalır */
+    max-height: 62vh; overflow-y: auto;
+}
+
+/* ── Künye ızgarası ──────────────────────────────────────── */
+.detay-kunye {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border);
+}
+.detay-kunye > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.detay-kunye span { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+.detay-kunye strong { font-size: 14px; word-break: break-word; }
+
+.detay-blok { padding: 16px 0; border-bottom: 1px solid var(--border); }
+.detay-blok:last-child { border-bottom: none; }
+.detay-blok h4 { margin: 0 0 10px; font-size: 14px; font-weight: 700; }
+.detay-blok p { margin: 0; line-height: 1.6; color: var(--muted); }
+
+/* ── Ek (dosya) listesi ──────────────────────────────────── */
+.ek-listesi { list-style: none; margin: 0; padding: 0; }
+.ek-listesi li {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.ek-listesi li:last-child { border-bottom: none; }
+.ek-listesi a { color: var(--accent); text-decoration: none; word-break: break-all; }
+
+/* ── İşlem geçmişi (zaman çizgisi) ───────────────────────── */
+.zaman-cizgisi { list-style: none; margin: 0 0 16px; padding: 0 0 0 18px; border-left: 2px solid var(--border); }
+.zaman-cizgisi li { position: relative; padding: 0 0 16px 14px; }
+.zaman-cizgisi li::before {
+    content: ''; position: absolute; left: -25px; top: 5px;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--accent); border: 2px solid var(--card);
+}
+.zc-ust { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font-size: 13px; }
+.zc-durum { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.zaman-cizgisi p { margin: 4px 0 0; font-size: 13px; line-height: 1.55; }
+
+/* ── Satır içi form (tek satırda alan + düğme) ───────────── */
+.satir-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* ── Mobil ───────────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .modal-body { max-height: 58vh; padding: 0 16px; }
+    .detay-kunye { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+    .filtre-cubugu .input { min-width: 0; flex: 1 1 45%; }
+    .satir-form .input { flex: 1 1 100%; }
+}
+
+/* ── Açık tema ───────────────────────────────────────────── */
+body[data-theme="acik"] .detay-kunye,
+body[data-theme="acik"] .detay-blok,
+body[data-theme="acik"] .ek-listesi li { border-color: #f1f5f9; }
+body[data-theme="acik"] .zaman-cizgisi { border-left-color: #e2e8f0; }
+body[data-theme="acik"] .zaman-cizgisi li::before { border-color: #fff; }
+
+/* ============================================================
+   FAZ 5 — KARAR DEFTERİ, BELGE ARŞİVİ, RESMİ BİLANÇO
+   ============================================================ */
+
+/* ── Yasal uyarı bandı ────────────────────────────────────── */
+/* Karar defteri, belge arşivi ve bilanço sayfalarının üstünde
+   kalıcı olarak görünür — bu modüllerin yasal aslın/mali müşavir
+   onayının yerine geçmediğini hatırlatır. Kapatılamaz bilinçli
+   olarak: bir kez kapatılıp unutulursa uyarının amacı kaybolur. */
+.uyari-yasal {
+    display: flex; align-items: flex-start; gap: 8px;
+    background: rgba(245,166,35,.1); border: 1px solid rgba(245,166,35,.3);
+    color: #f5a623; border-radius: var(--rsm, 10px);
+    padding: 11px 14px; font-size: 12.5px; line-height: 1.5;
+    margin-bottom: 16px;
+}
+body[data-theme="acik"] .uyari-yasal { background: #fff8e1; border-color: #f0d878; color: #8a6600; }
+
+/* ── Belge arşivi kart ızgarası ───────────────────────────── */
+.belge-izgara {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px; margin-top: 6px;
+}
+.belge-kart {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--rsm, 10px); padding: 14px;
+    display: flex; flex-direction: column; gap: 6px;
+}
+.belge-kart-ust { display: flex; justify-content: space-between; align-items: center; }
+.belge-ikon { font-size: 22px; }
+.belge-baslik { font-size: 14px; line-height: 1.35; }
+.belge-aciklama { font-size: 12px; color: var(--muted); margin: 0; line-height: 1.5; }
+.belge-karar-link { font-size: 12px; color: var(--accent); text-decoration: none; }
+.belge-karar-link:hover { text-decoration: underline; }
+.belge-alt { margin-top: 2px; }
+.belge-eylem { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }

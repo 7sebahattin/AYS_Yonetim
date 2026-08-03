@@ -8,15 +8,15 @@ $sayfa_basligi = 'Anasayfa';
 
 $kullanici = giris_kontrol();
 $donem     = $_GET['donem'] ?? date('Y-m');
-$stats     = istatistikler($kullanici['id'], $donem);
+$stats     = istatistikler($kullanici['site_id'], $donem);
 $db        = db();
 
 // Son 6 ay tahsilat trendi
 $trend_data = [];
 for ($i = 5; $i >= 0; $i--) {
     $d = date('Y-m', strtotime("-$i months"));
-    $stmt = $db->prepare("SELECT COALESCE(SUM(tutar),0) FROM aidatlar WHERE kullanici_id=? AND donem=? AND durum='odendi'");
-    $stmt->execute([$kullanici['id'], $d]);
+    $stmt = $db->prepare("SELECT COALESCE(SUM(tutar),0) FROM aidatlar WHERE site_id=? AND donem=? AND durum='odendi'");
+    $stmt->execute([$kullanici['site_id'], $d]);
     $trend_data[] = ['donem' => $d, 'ad' => donem_adi($d), 'tutar' => (float)$stmt->fetchColumn()];
 }
 $max_trend = max(array_column($trend_data, 'tutar') ?: [1]);
@@ -27,21 +27,63 @@ $stmt = $db->prepare("
            COALESCE(a.durum,'bekliyor') as durum
     FROM daireler d
     LEFT JOIN aidatlar a ON a.daire_id = d.id AND a.donem = ?
-    WHERE d.kullanici_id = ?
+    WHERE d.site_id = ?
       AND (a.durum IS NULL OR a.durum <> 'odendi')
     ORDER BY d.daire_no
     LIMIT 8
 ");
-$stmt->execute([$donem, $kullanici['id']]);
+$stmt->execute([$donem, $kullanici['site_id']]);
 $bekleyenler = $stmt->fetchAll();
 
 // Son giderler
-$stmt = $db->prepare("SELECT * FROM giderler WHERE kullanici_id=? AND donem=? ORDER BY tarih DESC LIMIT 5");
-$stmt->execute([$kullanici['id'], $donem]);
+$stmt = $db->prepare("SELECT * FROM giderler WHERE site_id=? AND donem=? ORDER BY tarih DESC LIMIT 5");
+$stmt->execute([$kullanici['site_id'], $donem]);
 $son_giderler = $stmt->fetchAll();
+
+// Operasyonel göstergeler (göç 005 uygulanmadıysa boş döner)
+$acik_talep      = acik_talep_sayisi((int)$kullanici['site_id']);
+$bakim_uyarilari = yaklasan_bakimlar((int)$kullanici['site_id'], 30);
 
 include 'includes/header.php';
 ?>
+
+<?php if ($acik_talep > 0 || $bakim_uyarilari): ?>
+<!-- Operasyonel uyarılar: yasal periyodik kontroller kaçırıldığında
+     yönetim için sorumluluk doğar, bu yüzden mali kartların ÜSTÜNDE. -->
+<div class="ops-uyari-grid">
+  <?php if ($acik_talep > 0): ?>
+  <a href="/talepler.php" class="ops-uyari" style="--ops-renk:#e94560">
+    <span class="ops-ikon">🛠</span>
+    <span>
+      <strong><?= (int)$acik_talep ?> açık talep</strong>
+      <small>Arıza ve istek bildirimleri bekliyor</small>
+    </span>
+  </a>
+  <?php endif; ?>
+
+  <?php if ($bakim_uyarilari): ?>
+    <?php
+    $gecikmis = count(array_filter($bakim_uyarilari, fn($b) => (int)$b['kalan_gun'] < 0));
+    $renk = $gecikmis > 0 ? '#e74c3c' : '#f5a623';
+    ?>
+    <a href="/demirbaslar.php" class="ops-uyari" style="--ops-renk:<?= $renk ?>">
+      <span class="ops-ikon">⏰</span>
+      <span>
+        <strong>
+          <?= $gecikmis > 0
+              ? $gecikmis . ' bakım GECİKTİ'
+              : count($bakim_uyarilari) . ' bakım yaklaşıyor' ?>
+        </strong>
+        <small>
+          <?= e_buyuk($bakim_uyarilari[0]['demirbas_adi']) ?> ·
+          <?= tarih_format($bakim_uyarilari[0]['planlanan_tarih']) ?>
+          <?= count($bakim_uyarilari) > 1 ? ' ve ' . (count($bakim_uyarilari) - 1) . ' tane daha' : '' ?>
+        </small>
+      </span>
+    </a>
+  <?php endif; ?>
+</div>
+<?php endif; ?>
 
 <!-- STAT KARTLARI -->
 <div class="stats-grid">
