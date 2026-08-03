@@ -39,9 +39,25 @@ $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/style.css?v=final">
+  <?php if (kimlige_burunuluyor_mu()): ?>
+  <link rel="stylesheet" href="/assets/yonetim.css?v=1">
+  <?php endif; ?>
   <script src="/assets/pwa-install.js" defer></script>
 </head>
 <body data-theme="<?= e($kullanici['tema'] ?? 'koyu') ?>">
+
+<?php if (kimlige_burunuluyor_mu()): $bur = burunme_bilgisi(); ?>
+<!-- Kullanıcı adına görüntüleme bandı. Kapatılamaz: bu ekranın
+     başkasının verisi olduğunu unutmak, yanlış apartmanda işlem
+     yapmakla sonuçlanır. -->
+<div class="ays-burunme-bandi">
+  <span>
+    👁 <strong><?= e($bur['hedef_ad'] ?? '') ?></strong> adına görüntülüyorsunuz —
+    <?= burunme_yazabilir_mi() ? 'YAZMA AÇIK' : 'salt-okunur' ?>
+  </span>
+  <a href="/yonetim/burun.php?islem=bitir">Görüntülemeyi bitir</a>
+</div>
+<?php endif; ?>
 
 <!-- ══ DESKTOP SIDEBAR ══════════════════════════════════════ -->
 <aside class="sidebar">
@@ -163,6 +179,33 @@ $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
 
   <div class="page-content">
     <?= flash_goster() ?>
+<?php
+// ── Sistem duyuruları ──────────────────────────────────────
+// Platform yönetiminden yayınlanır; hedefi tüm siteler ya da tek
+// bir site olabilir. Kapatma yok — süresi/bitiş tarihi duyuruyu
+// yayınlayan tarafından belirlenir.
+foreach (aktif_duyurular((int)($kullanici['site_id'] ?? 0)) as $duyuru):
+    $renk = $duyuru['tip'] === 'bakim' ? '#e74c3c'
+          : ($duyuru['tip'] === 'uyari' ? '#f5a623' : '#6c8cff');
+?>
+    <div class="flash" style="background:<?= $renk ?>1a;border:1px solid <?= $renk ?>55;color:<?= $renk ?>">
+      <strong><?= e($duyuru['baslik']) ?></strong>
+      <div style="color:var(--text);opacity:.85;margin-top:3px;font-weight:400">
+        <?= nl2br(e($duyuru['mesaj'])) ?>
+      </div>
+    </div>
+<?php endforeach; ?>
+<?php
+// ── Platform yönetimi kısayolu ─────────────────────────────
+// Yalnızca platform rolü olan hesaplara görünür.
+if (!kimlige_burunuluyor_mu() && platform_yetkili_mi(platform_rolu((int)$kullanici['id']))): ?>
+    <div class="flash" style="background:rgba(160,108,255,.1);border:1px solid rgba(160,108,255,.32);
+                              color:#a06cff;display:flex;align-items:center;gap:10px;
+                              flex-wrap:wrap;justify-content:space-between">
+      <span>🛡 Bu hesabın platform yönetim yetkisi var.</span>
+      <a href="/yonetim/giris.php" class="btn btn-sm btn-primary">Yönetim Paneli</a>
+    </div>
+<?php endif; ?>
 <?php
 // ── E-posta eksik/doğrulanmamış uyarısı ────────────────────
 // Mevcut kullanıcıların hiçbirinde e-posta adresi yok (bu alan sisteme
