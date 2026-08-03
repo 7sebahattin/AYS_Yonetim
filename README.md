@@ -578,6 +578,12 @@ penceresi açılır:
   `belge_indir.php` bekçisinden geçer, çapraz kiracı erişimi mümkün değildir.
 - Bir gider ya da aidat kaydı silindiğinde `hedefin_eklerini_sil()` ile bağlı tüm
   ekler (veritabanı satırı + diskteki dosya) birlikte temizlenir.
+- **Küçük resim + tam ekran önizleme:** gerçek (finfo doğrulamalı) JPEG/PNG/WEBP
+  ekler, listede küçük bir resim olarak gösterilir; tıklanınca `assets/onizleme.js`
+  (basit bir lightbox) görseli sayfa üzerinde büyük gösterir — yeni sekmeye gidip
+  indirme zorlamaz. Karar `ek_onizlenebilir_mi()` ile verilir ve `belge_indir.php`
+  bu türler için `Content-Disposition: inline` döner (diğer her tür — pdf, doc,
+  xls… — her zaman indirme olarak sunulmaya devam eder).
 
 ### Göç uygulanmadan önce
 

@@ -338,6 +338,14 @@ function gider_fisi_semasi_hazir_mi(): bool
     return $hazir;
 }
 
+// Bir ekin tarayıcıda küçük resim + tam ekran önizleme olarak
+// gösterilebilecek gerçek bir raster görsel olup olmadığını söyler.
+// belge_indir.php da AYNI listeyle karar verir (inline mi indirme mi).
+function ek_onizlenebilir_mi(?string $mime): bool
+{
+    return in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true);
+}
+
 function boyut_okunabilir(?int $bayt): string
 {
     $bayt = (int)$bayt;

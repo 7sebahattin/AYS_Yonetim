@@ -145,17 +145,22 @@ function dosya_sil(string $goreli_yol): bool {
 
 // Dosyayı indirme olarak akıtır. ÇAĞIRAN, yetki kontrolünü kendisi
 // yapmış olmalıdır — bu fonksiyon yetki denetlemez.
-function dosya_akit(string $goreli_yol, string $indirme_adi, string $mime): void {
+//
+// $satir_ici=true ise tarayıcı dosyayı indirmek yerine sekmede/önizlemede
+// gösterir (Content-Disposition: inline). YALNIZCA çağıran tarafından
+// gerçek MIME türü doğrulanmış (finfo, yükleme sırasında) güvenli raster
+// görsel türleri için kullanılmalı — SVG/HTML gibi betik çalıştırabilen
+// türler zaten dosya_izinli_turler() tarafından hiç kabul edilmiyor.
+function dosya_akit(string $goreli_yol, string $indirme_adi, string $mime, bool $satir_ici = false): void {
     $yol = dosya_tam_yol($goreli_yol);
     if ($yol === null || !is_file($yol)) {
         http_response_code(404);
         exit('Dosya bulunamadı.');
     }
-    // Tarayıcının içeriği yorumlamasını (ör. HTML/JS olarak çalıştırmasını)
-    // engellemek için her zaman ek olarak indirilir.
     header('Content-Type: ' . $mime);
     header('Content-Length: ' . filesize($yol));
-    header('Content-Disposition: attachment; filename="' . rawurlencode($indirme_adi) . '"');
+    $yerlesim = $satir_ici ? 'inline' : 'attachment';
+    header('Content-Disposition: ' . $yerlesim . '; filename="' . rawurlencode($indirme_adi) . '"');
     header('X-Content-Type-Options: nosniff');
     readfile($yol);
     exit;

@@ -347,6 +347,13 @@ include 'includes/header.php';
         <ul class="ek-listesi">
           <?php foreach ($duzenle_ekler as $ek): ?>
           <li>
+            <?php if (ek_onizlenebilir_mi($ek['mime'])): ?>
+            <a href="/belge_indir.php?id=<?= (int)$ek['id'] ?>" class="ek-onizleme-baglanti"
+               data-lightbox data-baslik="<?= e($ek['orijinal_ad']) ?>">
+              <img src="/belge_indir.php?id=<?= (int)$ek['id'] ?>" alt="<?= e($ek['orijinal_ad']) ?>"
+                   class="ek-onizleme" loading="lazy">
+            </a>
+            <?php endif; ?>
             <a href="/belge_indir.php?id=<?= (int)$ek['id'] ?>" target="_blank" rel="noopener">📎 <?= e($ek['orijinal_ad']) ?></a>
             <span class="muted"><?= e(boyut_okunabilir((int)$ek['boyut'])) ?></span>
             <form method="post" style="display:inline">
