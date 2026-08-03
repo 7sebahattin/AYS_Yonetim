@@ -46,11 +46,11 @@ $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
   <meta name="apple-mobile-web-app-title" content="AYS">
   <title><?= e($sayfa_basligi ?? 'Panel') ?> — <?= e_buyuk($kullanici['apartman_adi']) ?></title>
   <link rel="manifest" href="/manifest.json">
-  <link rel="icon" href="/assets/icons/favicon-32.png" sizes="32x32">
-  <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+  <link rel="icon" href="/assets/icons/favicon-32.png?v=2" sizes="32x32">
+  <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png?v=2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/style.css?v=final">
+  <link rel="stylesheet" href="/assets/style.css?v=2">
   <?php if (kimlige_burunuluyor_mu()): ?>
   <link rel="stylesheet" href="/assets/yonetim.css?v=1">
   <?php endif; ?>
@@ -75,7 +75,7 @@ $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
 <!-- ══ DESKTOP SIDEBAR ══════════════════════════════════════ -->
 <aside class="sidebar">
   <a href="/dashboard.php" class="sidebar-brand" aria-label="Panele git">
-    <div class="brand-icon"><img src="/assets/icons/icon-192.png" alt="AYS logosu"></div>
+    <div class="brand-icon"><img src="/assets/icons/icon-192.png?v=2" alt="AYS logosu"></div>
     <div>
       <div class="brand-name"><?= e_buyuk($kullanici['apartman_adi']) ?></div>
       <div class="brand-user"><?= e($kullanici['kullanici_adi']) ?></div>
@@ -117,7 +117,7 @@ $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
 <!-- ══ MOBİL TOPBAR ════════════════════════════════════════ -->
 <header class="mobile-topbar">
   <a href="/dashboard.php" class="mobile-topbar-brand" aria-label="Panele git">
-    <div class="mobile-brand-icon"><img src="/assets/icons/icon-192.png" alt="AYS logosu"></div>
+    <div class="mobile-brand-icon"><img src="/assets/icons/icon-192.png?v=2" alt="AYS logosu"></div>
     <div>
       <div class="mobile-brand-text"><?= e_buyuk($kullanici['apartman_adi']) ?></div>
       <div class="mobile-brand-sub"><?= e($kullanici['kullanici_adi']) ?></div>

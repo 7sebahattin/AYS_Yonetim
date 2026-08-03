@@ -5,18 +5,24 @@
 //  önbelleklenmez — bunlar her zaman ağdan (network-only) alınır.
 // ============================================================
 
-const CACHE_VERSION = 'ays-static-v1';
+// SÜRÜM NUMARASI: her statik varlık değişikliğinde artırılmalı. Bu değer
+// değişmeden sw.js'in kendisi (byte olarak) değişmezse tarayıcı "yeni bir
+// service worker sürümü var" diye algılamaz — install/activate hiç yeniden
+// çalışmaz ve PRECACHE_URLS'teki eski dosyalar süresiz önbellekte kalır.
+// Bu yüzden ikon/CSS güncellemesi yapılan her deploy'da hem burası hem de
+// aşağıdaki dosya yollarındaki ?v= sorgusu birlikte artırılır.
+const CACHE_VERSION = 'ays-static-v2';
 
 // Kurulumda önceden önbelleğe alınacak, gerçekten statik dosyalar
 const PRECACHE_URLS = [
-  '/assets/style.css',
-  '/assets/landing.css',
+  '/assets/style.css?v=2',
+  '/assets/landing.css?v=2',
   '/assets/print.css',
-  '/assets/icons/icon-192.png',
-  '/assets/icons/icon-512.png',
-  '/assets/icons/icon-maskable-192.png',
-  '/assets/icons/icon-maskable-512.png',
-  '/assets/icons/apple-touch-icon.png',
+  '/assets/icons/icon-192.png?v=2',
+  '/assets/icons/icon-512.png?v=2',
+  '/assets/icons/icon-maskable-192.png?v=2',
+  '/assets/icons/icon-maskable-512.png?v=2',
+  '/assets/icons/apple-touch-icon.png?v=2',
   '/manifest.json',
   '/offline.html',
 ];

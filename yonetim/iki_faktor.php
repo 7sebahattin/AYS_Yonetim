@@ -120,7 +120,7 @@ $hesap_etiketi = $hesap['eposta'] ?: $hesap['kullanici_adi'];
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>İki Faktörlü Doğrulama — AYS Yönetim</title>
-  <link rel="icon" href="/assets/icons/favicon-32.png" sizes="32x32">
+  <link rel="icon" href="/assets/icons/favicon-32.png?v=2" sizes="32x32">
   <link rel="stylesheet" href="/assets/yonetim.css?v=1">
 </head>
 <body class="y-giris-govde">
