@@ -8,15 +8,15 @@ $sayfa_basligi = 'Anasayfa';
 
 $kullanici = giris_kontrol();
 $donem     = $_GET['donem'] ?? date('Y-m');
-$stats     = istatistikler($kullanici['id'], $donem);
+$stats     = istatistikler($kullanici['site_id'], $donem);
 $db        = db();
 
 // Son 6 ay tahsilat trendi
 $trend_data = [];
 for ($i = 5; $i >= 0; $i--) {
     $d = date('Y-m', strtotime("-$i months"));
-    $stmt = $db->prepare("SELECT COALESCE(SUM(tutar),0) FROM aidatlar WHERE kullanici_id=? AND donem=? AND durum='odendi'");
-    $stmt->execute([$kullanici['id'], $d]);
+    $stmt = $db->prepare("SELECT COALESCE(SUM(tutar),0) FROM aidatlar WHERE site_id=? AND donem=? AND durum='odendi'");
+    $stmt->execute([$kullanici['site_id'], $d]);
     $trend_data[] = ['donem' => $d, 'ad' => donem_adi($d), 'tutar' => (float)$stmt->fetchColumn()];
 }
 $max_trend = max(array_column($trend_data, 'tutar') ?: [1]);
@@ -27,17 +27,17 @@ $stmt = $db->prepare("
            COALESCE(a.durum,'bekliyor') as durum
     FROM daireler d
     LEFT JOIN aidatlar a ON a.daire_id = d.id AND a.donem = ?
-    WHERE d.kullanici_id = ?
+    WHERE d.site_id = ?
       AND (a.durum IS NULL OR a.durum <> 'odendi')
     ORDER BY d.daire_no
     LIMIT 8
 ");
-$stmt->execute([$donem, $kullanici['id']]);
+$stmt->execute([$donem, $kullanici['site_id']]);
 $bekleyenler = $stmt->fetchAll();
 
 // Son giderler
-$stmt = $db->prepare("SELECT * FROM giderler WHERE kullanici_id=? AND donem=? ORDER BY tarih DESC LIMIT 5");
-$stmt->execute([$kullanici['id'], $donem]);
+$stmt = $db->prepare("SELECT * FROM giderler WHERE site_id=? AND donem=? ORDER BY tarih DESC LIMIT 5");
+$stmt->execute([$kullanici['site_id'], $donem]);
 $son_giderler = $stmt->fetchAll();
 
 include 'includes/header.php';

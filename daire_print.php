@@ -17,8 +17,8 @@ if (!$daire_id) {
 }
 
 // Güvenlik: Bu daire bu kullanıcıya ait mi?
-$stmt = $db->prepare("SELECT * FROM daireler WHERE id=? AND kullanici_id=?");
-$stmt->execute([$daire_id, $kullanici['id']]);
+$stmt = $db->prepare("SELECT * FROM daireler WHERE id=? AND site_id=?");
+$stmt->execute([$daire_id, $kullanici['site_id']]);
 $daire = $stmt->fetch();
 
 if (!$daire) {
@@ -29,10 +29,10 @@ if (!$daire) {
 // Tüm dönem geçmişi
 $stmt = $db->prepare("
     SELECT * FROM aidatlar
-    WHERE daire_id = ? AND kullanici_id = ?
+    WHERE daire_id = ? AND site_id = ?
     ORDER BY donem DESC
 ");
-$stmt->execute([$daire_id, $kullanici['id']]);
+$stmt->execute([$daire_id, $kullanici['site_id']]);
 $tum_aidatlar = $stmt->fetchAll();
 
 // İstatistik

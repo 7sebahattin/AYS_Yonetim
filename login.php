@@ -49,6 +49,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['toplam_daire']  = $k['toplam_daire'];
                 $_SESSION['tema']          = $k['tema'] ?? 'koyu';
                 $_SESSION['son_islem']     = time();
+                // Aktif site her girişte yeniden belirlenir (giris_kontrol()
+                // içinde yetki doğrulamasıyla); önceki oturumdan kalan seçim
+                // taşınmasın.
+                unset($_SESSION['aktif_site_id']);
 
                 if (!empty($_POST['beni_hatirla'])) {
                     hatirlama_jetonu_baslat((int)$k['id']);
@@ -119,10 +123,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     $yeni_id = (int)$pdo->lastInsertId();
 
-                    // Daireları oluştur
-                    $ins = $pdo->prepare("INSERT INTO daireler (kullanici_id, daire_no, aylik_aidat) VALUES (?, ?, 500)");
-                    for ($i = 1; $i <= $toplam_daire; $i++) {
-                        $ins->execute([$yeni_id, $i]);
+                    if (site_semasi_hazir_mi()) {
+                        // Site kaydı + kullanıcının bu siteye yönetici yetkisi + varsayılan blok
+                        $pdo->prepare("INSERT INTO siteler (ad, adres, telefon, toplam_daire) VALUES (?, NULL, NULL, ?)")
+                            ->execute([$apartman_adi, $toplam_daire]);
+                        $site_id = (int)$pdo->lastInsertId();
+
+                        $pdo->prepare("INSERT INTO kullanici_site_yetkileri (kullanici_id, site_id, rol) VALUES (?, ?, 'yonetici')")
+                            ->execute([$yeni_id, $site_id]);
+
+                        $pdo->prepare("INSERT INTO bloklar (site_id, ad, sira) VALUES (?, 'Ana Blok', 1)")
+                            ->execute([$site_id]);
+                        $blok_id = (int)$pdo->lastInsertId();
+
+                        $ins = $pdo->prepare("INSERT INTO daireler (site_id, blok_id, daire_no, aylik_aidat) VALUES (?, ?, ?, 500)");
+                        for ($i = 1; $i <= $toplam_daire; $i++) {
+                            $ins->execute([$site_id, $blok_id, $i]);
+                        }
+                    } else {
+                        // Göç 003 uygulanmamış → eski (tek site) davranışı
+                        $ins = $pdo->prepare("INSERT INTO daireler (kullanici_id, daire_no, aylik_aidat) VALUES (?, ?, 500)");
+                        for ($i = 1; $i <= $toplam_daire; $i++) {
+                            $ins->execute([$yeni_id, $i]);
+                        }
                     }
                     $pdo->commit();
 

@@ -27,15 +27,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $current = date('Y-m', strtotime($current . '-01 +1 month'));
         }
 
-        $stmt = $db->prepare("SELECT id, aylik_aidat FROM daireler WHERE kullanici_id=?");
-        $stmt->execute([$kullanici['id']]);
+        $stmt = $db->prepare("SELECT id, aylik_aidat FROM daireler WHERE site_id=?");
+        $stmt->execute([$kullanici['site_id']]);
         $tum_daireler_list = $stmt->fetchAll();
 
         // Tüm (daire × dönem) satırlarını hazırla, tek tek değil toplu (multi-row) INSERT ile yaz
         $satirlar = [];
         foreach ($tum_daireler_list as $d) {
             foreach ($donemler as $dnem) {
-                $satirlar[] = [$kullanici['id'], $d['id'], $dnem, $d['aylik_aidat']];
+                $satirlar[] = [$kullanici['site_id'], $d['id'], $dnem, $d['aylik_aidat']];
             }
         }
 
@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach ($parti as $satir) {
                 array_push($degerler, ...$satir);
             }
-            $ins = $db->prepare("INSERT IGNORE INTO aidatlar (kullanici_id, daire_id, donem, tutar, durum) VALUES $yer_tutucular");
+            $ins = $db->prepare("INSERT IGNORE INTO aidatlar (site_id, daire_id, donem, tutar, durum) VALUES $yer_tutucular");
             $ins->execute($degerler);
             $say += $ins->rowCount();
         }
@@ -62,8 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $dekont_no    = buyuk($_POST['dekont_no'] ?? '');
         $notlar       = buyuk($_POST['notlar'] ?? '');
 
-        $stmt = $db->prepare("SELECT id FROM daireler WHERE id=? AND kullanici_id=?");
-        $stmt->execute([$daire_id, $kullanici['id']]);
+        $stmt = $db->prepare("SELECT id FROM daireler WHERE id=? AND site_id=?");
+        $stmt->execute([$daire_id, $kullanici['site_id']]);
         if (!$stmt->fetch()) { flash('Yetkisiz işlem.', 'hata'); header("Location: /aidatlar.php?donem=$donem"); exit; }
 
         $stmt = $db->prepare("SELECT id FROM aidatlar WHERE daire_id=? AND donem=?");
@@ -74,16 +74,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $db->prepare("UPDATE aidatlar SET durum='odendi', tutar=?, odeme_tarihi=?, dekont_no=?, notlar=? WHERE id=?")
                ->execute([$tutar, $odeme_tarihi, $dekont_no, $notlar, $mevcut['id']]);
         } else {
-            $db->prepare("INSERT INTO aidatlar (kullanici_id, daire_id, donem, tutar, durum, odeme_tarihi, dekont_no, notlar)
+            $db->prepare("INSERT INTO aidatlar (site_id, daire_id, donem, tutar, durum, odeme_tarihi, dekont_no, notlar)
                           VALUES (?,?,?,?,'odendi',?,?,?)")
-               ->execute([$kullanici['id'], $daire_id, $donem, $tutar, $odeme_tarihi, $dekont_no, $notlar]);
+               ->execute([$kullanici['site_id'], $daire_id, $donem, $tutar, $odeme_tarihi, $dekont_no, $notlar]);
         }
         flash("Ödeme kaydedildi.");
     }
 
     if ($islem === 'sil') {
         $id = (int)$_POST['aidat_id'];
-        $db->prepare("DELETE FROM aidatlar WHERE id=? AND kullanici_id=?")->execute([$id, $kullanici['id']]);
+        $db->prepare("DELETE FROM aidatlar WHERE id=? AND site_id=?")->execute([$id, $kullanici['site_id']]);
         flash('Kayıt silindi.');
     }
 
@@ -100,10 +100,10 @@ $stmt = $db->prepare("
            a.id AS aidat_id, a.tutar, a.durum, a.odeme_tarihi, a.dekont_no, a.notlar
     FROM daireler d
     LEFT JOIN aidatlar a ON a.daire_id = d.id AND a.donem = ?
-    WHERE d.kullanici_id = ?
+    WHERE d.site_id = ?
     ORDER BY d.daire_no
 ");
-$stmt->execute([$donem, $kullanici['id']]);
+$stmt->execute([$donem, $kullanici['site_id']]);
 $tum_daireler = $stmt->fetchAll();
 
 $liste = array_filter($tum_daireler, function($r) use ($filtre) {

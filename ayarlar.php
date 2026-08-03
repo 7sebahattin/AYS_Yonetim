@@ -22,12 +22,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!$apartman_adi) { flash('Apartman adı zorunludur.', 'hata'); }
         else {
-            $db->prepare("UPDATE kullanicilar SET apartman_adi=?, adres=?, telefon=?, tema=? WHERE id=?")
-               ->execute([$apartman_adi, $adres, $telefon, $tema, $kullanici['id']]);
+            if (site_semasi_hazir_mi()) {
+                // Apartman bilgileri artık siteler tablosunda; tema ise
+                // kullanıcıya ait bir tercih olduğu için kullanicilar'da kalır.
+                $db->prepare("UPDATE siteler SET ad=?, adres=?, telefon=? WHERE id=?")
+                   ->execute([$apartman_adi, $adres, $telefon, $kullanici['site_id']]);
+            } else {
+                $db->prepare("UPDATE kullanicilar SET apartman_adi=?, adres=?, telefon=? WHERE id=?")
+                   ->execute([$apartman_adi, $adres, $telefon, $kullanici['id']]);
+            }
+            $db->prepare("UPDATE kullanicilar SET tema=? WHERE id=?")->execute([$tema, $kullanici['id']]);
             $_SESSION['apartman_adi'] = $apartman_adi;
-            $_SESSION['tema'] = $tema; // Oturumu da güncelledik
+            $_SESSION['tema'] = $tema;
             flash('Apartman ve tema bilgileri güncellendi.');
         }
+    }
+
+    // ── Blok ekle ────────────────────────────────────────────
+    if ($islem === 'blok_ekle' && site_semasi_hazir_mi()) {
+        $blok_adi = buyuk($_POST['blok_adi'] ?? '');
+        if ($blok_adi === '') {
+            flash('Blok adı zorunludur.', 'hata');
+        } else {
+            try {
+                $db->prepare("INSERT INTO bloklar (site_id, ad, sira) VALUES (?, ?, ?)")
+                   ->execute([$kullanici['site_id'], $blok_adi,
+                              count(site_bloklari($kullanici['site_id'])) + 1]);
+                flash("\"$blok_adi\" bloğu eklendi.");
+            } catch (Throwable $ex) {
+                flash('Bu blok adı zaten kullanılıyor.', 'hata');
+            }
+        }
+    }
+
+    // ── Blok sil ─────────────────────────────────────────────
+    if ($islem === 'blok_sil' && site_semasi_hazir_mi()) {
+        $blok_id = (int)($_POST['blok_id'] ?? 0);
+        // Sorguya site_id de eklenir: başka bir sitenin bloğu silinemesin.
+        $db->prepare("DELETE FROM bloklar WHERE id=? AND site_id=?")
+           ->execute([$blok_id, $kullanici['site_id']]);
+        // Daireler silinmez; blok bağlantısı ON DELETE SET NULL ile boşalır.
+        flash('Blok silindi. Bloğa bağlı daireler korundu.');
     }
 
     // ── E-posta adresi kaydet / değiştir ─────────────────────
@@ -101,6 +136,21 @@ $stmt = $db->prepare("SELECT * FROM kullanicilar WHERE id=?");
 $stmt->execute([$kullanici['id']]);
 $info = $stmt->fetch();
 
+// Apartman bilgileri artık siteler tablosunda tutuluyor; formun bunları
+// oradan okuması gerekiyor (tema ve e-posta kullanıcıya ait kalır).
+if (site_semasi_hazir_mi()) {
+    $ss = $db->prepare("SELECT ad, adres, telefon FROM siteler WHERE id=?");
+    $ss->execute([$kullanici['site_id']]);
+    if ($site_bilgi = $ss->fetch()) {
+        $info['apartman_adi'] = $site_bilgi['ad'];
+        $info['adres']        = $site_bilgi['adres'];
+        $info['telefon']      = $site_bilgi['telefon'];
+    }
+    $bloklar = site_bloklari($kullanici['site_id']);
+} else {
+    $bloklar = [];
+}
+
 include 'includes/header.php';
 ?>
 
@@ -146,6 +196,68 @@ include 'includes/header.php';
       </div>
     </form>
   </div>
+
+  <?php if (site_semasi_hazir_mi()): ?>
+  <div class="card" style="margin-bottom:24px">
+    <div class="card-header">
+      <span>🏗️ Bloklar</span>
+      <span class="badge badge-cat"><?= count($bloklar) ?> blok</span>
+    </div>
+    <p style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:14px">
+      Siteniz birden fazla bloktan oluşuyorsa buradan tanımlayın; daireleri bloklara
+      ayırarak rapor alabilirsiniz. Tek bloklu apartmanlarda değişiklik gerekmez.
+    </p>
+
+    <?php if ($bloklar): ?>
+    <div class="table-wrap" style="margin-bottom:14px">
+      <table class="table">
+        <thead><tr><th>Blok</th><th>Daire Sayısı</th><th>İşlem</th></tr></thead>
+        <tbody>
+        <?php foreach ($bloklar as $b):
+          $bs = $db->prepare("SELECT COUNT(*) FROM daireler WHERE blok_id=? AND site_id=?");
+          $bs->execute([$b['id'], $kullanici['site_id']]);
+          $daire_adet = (int)$bs->fetchColumn();
+        ?>
+          <tr>
+            <td><strong><?= e_buyuk($b['ad']) ?></strong></td>
+            <td><?= $daire_adet ?></td>
+            <td>
+              <?php if (count($bloklar) > 1): ?>
+              <form method="post" style="display:inline">
+                <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+                <input type="hidden" name="islem" value="blok_sil">
+                <input type="hidden" name="blok_id" value="<?= (int)$b['id'] ?>">
+                <button type="submit" class="btn btn-sm btn-danger"
+                        data-confirm="&quot;<?= e($b['ad']) ?>&quot; bloğu silinsin mi? Daireler silinmez, yalnızca blok bağlantıları boşalır.">
+                  ✕ Sil
+                </button>
+              </form>
+              <?php else: ?>
+                <span class="muted" style="font-size:12px">Son blok silinemez</span>
+              <?php endif; ?>
+            </td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+    <?php endif; ?>
+
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+      <input type="hidden" name="islem" value="blok_ekle">
+      <div class="form-grid">
+        <div class="form-group full-width">
+          <label>Yeni Blok Adı</label>
+          <input type="text" name="blok_adi" class="input buyuk" placeholder="örn: B Blok" required>
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <button type="submit" class="btn btn-primary">+ Blok Ekle</button>
+      </div>
+    </form>
+  </div>
+  <?php endif; ?>
 
   <?php if (eposta_semasi_hazir_mi()): ?>
   <?php

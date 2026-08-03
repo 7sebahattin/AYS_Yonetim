@@ -31,19 +31,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $db->beginTransaction();
             try {
                 if ($islem === 'ekle') {
-                    $db->prepare("INSERT INTO giderler (kullanici_id, kategori, aciklama, tutar, tarih, donem, fatura_no)
+                    $db->prepare("INSERT INTO giderler (site_id, kategori, aciklama, tutar, tarih, donem, fatura_no)
                                   VALUES (?,?,?,?,?,?,?)")
-                       ->execute([$kullanici['id'], $kategori, $aciklama, $tutar, $tarih, $kayit_donem, $fatura_no]);
+                       ->execute([$kullanici['site_id'], $kategori, $aciklama, $tutar, $tarih, $kayit_donem, $fatura_no]);
                     $mesaj = 'Gider kaydedildi.';
                 } else {
                     $gider_id = (int)($_POST['gider_id'] ?? 0);
                     $db->prepare("UPDATE giderler SET kategori=?, aciklama=?, tutar=?, tarih=?, donem=?, fatura_no=?
-                                  WHERE id=? AND kullanici_id=?")
-                       ->execute([$kategori, $aciklama, $tutar, $tarih, $kayit_donem, $fatura_no, $gider_id, $kullanici['id']]);
+                                  WHERE id=? AND site_id=?")
+                       ->execute([$kategori, $aciklama, $tutar, $tarih, $kayit_donem, $fatura_no, $gider_id, $kullanici['site_id']]);
                     $mesaj = 'Gider güncellendi.';
                 }
                 // Yeni/kullanılan kategoriyi bu kullanıcının öneri listesine kaydet
-                gider_kategori_kaydet($kullanici['id'], $kategori);
+                gider_kategori_kaydet($kullanici['site_id'], $kategori);
                 $db->commit();
                 flash($mesaj);
             } catch (Exception $ex) {
@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($islem === 'sil') {
         $id = (int)$_POST['gider_id'];
-        $db->prepare("DELETE FROM giderler WHERE id=? AND kullanici_id=?")->execute([$id, $kullanici['id']]);
+        $db->prepare("DELETE FROM giderler WHERE id=? AND site_id=?")->execute([$id, $kullanici['site_id']]);
         flash('Kayıt silindi.');
     }
 
@@ -64,8 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ─── VERİ ÇEK ────────────────────────────────────────────────
-$stmt = $db->prepare("SELECT * FROM giderler WHERE kullanici_id=? AND donem=? ORDER BY tarih DESC");
-$stmt->execute([$kullanici['id'], $donem]);
+$stmt = $db->prepare("SELECT * FROM giderler WHERE site_id=? AND donem=? ORDER BY tarih DESC");
+$stmt->execute([$kullanici['site_id'], $donem]);
 $giderler = $stmt->fetchAll();
 
 $toplam = array_sum(array_column($giderler, 'tutar'));
@@ -76,14 +76,14 @@ foreach ($giderler as $g) {
 }
 arsort($kat_ozet);
 
-$kategori_onerileri = gider_kategori_onerileri($kullanici['id']);
+$kategori_onerileri = gider_kategori_onerileri($kullanici['site_id']);
 
 // Düzenleme modu
 $duzenle_id = (int)($_GET['duzenle'] ?? 0);
 $duzenle = null;
 if ($duzenle_id) {
-    $stmt = $db->prepare("SELECT * FROM giderler WHERE id=? AND kullanici_id=?");
-    $stmt->execute([$duzenle_id, $kullanici['id']]);
+    $stmt = $db->prepare("SELECT * FROM giderler WHERE id=? AND site_id=?");
+    $stmt->execute([$duzenle_id, $kullanici['site_id']]);
     $duzenle = $stmt->fetch();
 }
 
