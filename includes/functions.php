@@ -4,6 +4,29 @@
 // ============================================================
 
 require_once __DIR__ . '/../config.php';
+// varsayilanlar.php, config.php'de tanımlanmamış ayarlara güvenli
+// varsayılan verir. config.php sunucuya deploy EDİLMEDİĞİ için, koda
+// eklenen yeni bir ayar sabiti olmadan da sistem çalışmaya devam eder.
+require_once __DIR__ . '/varsayilanlar.php';
+require_once __DIR__ . '/denetim.php';
+require_once __DIR__ . '/hiz_limiti.php';
+
+// ─── Şema hazırlık kontrolü ─────────────────────────────────
+// Dosyalar sunucuya kopyalandıktan sonra göç (migration) elle
+// çalıştırılır. Bu iki adım arasında e-posta sütunu henüz yokken
+// sistemin ölümcül hata vermesini önler: e-posta özellikleri sessizce
+// devre dışı kalır, uygulamanın geri kalanı çalışmaya devam eder.
+function eposta_semasi_hazir_mi(): bool {
+    static $hazir = null;
+    if ($hazir !== null) return $hazir;
+    try {
+        db()->query("SELECT eposta FROM kullanicilar LIMIT 0");
+        $hazir = true;
+    } catch (Throwable $ex) {
+        $hazir = false;
+    }
+    return $hazir;
+}
 
 // ─── Güvenlik Header'ları ───────────────────────────────────
 function guvenlik_headerlari(): void {

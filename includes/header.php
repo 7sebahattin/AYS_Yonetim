@@ -141,3 +141,45 @@ $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
 
   <div class="page-content">
     <?= flash_goster() ?>
+<?php
+// ── E-posta eksik/doğrulanmamış uyarısı ────────────────────
+// Mevcut kullanıcıların hiçbirinde e-posta adresi yok (bu alan sisteme
+// sonradan eklendi). Hesap kurtarma yolu olmadan kalmamaları için
+// panelde kalıcı ama kapatılabilir bir hatırlatma gösterilir.
+//
+// "Sonra" tercihi banner çizilmeden ÖNCE işlenir; aksi halde tıklanan
+// istekte uyarı bir kez daha görünürdü.
+if (isset($_GET['eposta_uyarisi']) && $_GET['eposta_uyarisi'] === 'gizle') {
+    $_SESSION['eposta_uyarisi_gizle'] = 1;
+}
+
+if (eposta_semasi_hazir_mi() && $aktif_sayfa !== 'ayarlar.php' && empty($_SESSION['eposta_uyarisi_gizle'])) {
+    $eu = db()->prepare("SELECT eposta, eposta_dogrulandi FROM kullanicilar WHERE id = ?");
+    $eu->execute([$kullanici['id']]);
+    $eu_bilgi = $eu->fetch();
+    $eu_yok     = empty($eu_bilgi['eposta']);
+    $eu_onaysiz = !$eu_yok && (int)$eu_bilgi['eposta_dogrulandi'] === 0;
+
+    if ($eu_yok || $eu_onaysiz):
+?>
+    <div class="flash" style="background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.35);color:#f5a623;
+                              display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between">
+      <span style="flex:1;min-width:220px">
+        <?php if ($eu_yok): ?>
+          ⚠ Hesabınızda kayıtlı e-posta yok. Şifrenizi unutursanız kurtarma yolu olmaz.
+        <?php else: ?>
+          ⚠ E-posta adresiniz doğrulanmadı. Şifre sıfırlama yalnızca doğrulanmış adrese gönderilir.
+        <?php endif; ?>
+      </span>
+      <span style="display:flex;gap:8px;flex-shrink:0">
+        <a href="/ayarlar.php" class="btn btn-sm btn-primary">
+          <?= $eu_yok ? 'E-posta Ekle' : 'Doğrula' ?>
+        </a>
+        <a href="?<?= e(http_build_query(array_merge($_GET, ['eposta_uyarisi' => 'gizle']))) ?>"
+           class="btn btn-sm btn-ghost">Sonra</a>
+      </span>
+    </div>
+<?php
+    endif;
+}
+?>

@@ -15,6 +15,36 @@ define('SESSION_SURE', 300);          // 5 dakika hareketsizlikte oturum sonlan�
                                        // "Beni Hatırla" ile giriş yapan kullanıcılar bu sınırdan
                                        // etkilenmez; oturum jetonuyla sessizce yenilenir.
 
+// ─── Site adresi ────────────────────────────────────────────
+// E-postalardaki bağlantılar bununla kurulur.
+define('SITE_ADRESI', 'https://ays.derspros.com.tr');
+
+// ─── E-posta (SMTP) ─────────────────────────────────────────
+// Şifre sıfırlama e-postaları buradan gönderilir. Boş bırakılırsa
+// e-posta gönderimi devre dışı kalır (sistem çalışmaya devam eder,
+// arayüz "yapılandırılmamış" uyarısı gösterir).
+//
+// cPanel'de bir e-posta hesabı oluşturup (ör. noreply@alanadiniz.com)
+// bilgilerini buraya girin. PHP'nin mail() fonksiyonu KULLANILMIYOR;
+// kimliği doğrulanmış SMTP kullanılıyor çünkü paylaşımlı hostingde
+// mail() ile gönderilen iletiler büyük oranda spam'e düşer.
+//
+// ÖNEMLİ: SMTP tek başına yetmez — alan adına SPF ve DKIM DNS
+// kayıtlarını da eklemezseniz iletiler yine spam'e düşebilir.
+define('SMTP_HOST', '');                       // ör. mail.alanadiniz.com
+define('SMTP_PORT', 587);                      // 587 (TLS) veya 465 (SSL)
+define('SMTP_KULLANICI', '');                  // ör. noreply@alanadiniz.com
+define('SMTP_SIFRE', '');
+define('SMTP_GUVENLIK', 'tls');                // tls | ssl | yok
+define('EPOSTA_GONDEREN', '');                 // ör. noreply@alanadiniz.com
+define('EPOSTA_GONDEREN_AD', 'AYS — Apartman Yönetim Sistemi');
+
+// ─── Şema göçü (migration) anahtarı ─────────────────────────
+// Web üzerinden göç çalıştırmak için gereken gizli anahtar.
+// Boş bırakılırsa web arayüzünden göç çalıştırılamaz.
+// Uzun ve rastgele olmalı, ör: bin2hex(random_bytes(24)) çıktısı.
+define('GOC_ANAHTARI', '');
+
 // ─── PDO Bağlantısı ─────────────────────────────────────────
 function db(): PDO {
     static $pdo = null;

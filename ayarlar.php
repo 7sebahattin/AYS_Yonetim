@@ -4,6 +4,7 @@
 // ============================================================
 require_once 'config.php';
 require_once 'includes/functions.php';
+require_once 'includes/kimlik.php';
 $sayfa_basligi = 'Ayarlar';
 
 $kullanici = giris_kontrol();
@@ -26,6 +27,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['apartman_adi'] = $apartman_adi;
             $_SESSION['tema'] = $tema; // Oturumu da güncelledik
             flash('Apartman ve tema bilgileri güncellendi.');
+        }
+    }
+
+    // ── E-posta adresi kaydet / değiştir ─────────────────────
+    if ($islem === 'eposta_kaydet' && eposta_semasi_hazir_mi()) {
+        $eposta = trim($_POST['eposta'] ?? '');
+        if (!filter_var($eposta, FILTER_VALIDATE_EMAIL)) {
+            flash('Geçerli bir e-posta adresi girin.', 'hata');
+        } else {
+            $es = $db->prepare("SELECT id FROM kullanicilar WHERE eposta = ? AND id <> ?");
+            $es->execute([$eposta, $kullanici['id']]);
+            if ($es->fetch()) {
+                flash('Bu e-posta adresi başka bir hesapta kayıtlı.', 'hata');
+            } else {
+                // Adres değiştiğinde doğrulama sıfırlanır: yeni adresin
+                // gerçekten kullanıcıya ait olduğu kanıtlanmadan şifre
+                // sıfırlama bağlantısı oraya gönderilmemeli.
+                $db->prepare("UPDATE kullanicilar SET eposta = ?, eposta_dogrulandi = 0 WHERE id = ?")
+                   ->execute([$eposta, $kullanici['id']]);
+                denetim_yaz('eposta_guncellendi', 'kullanici', $kullanici['id']);
+
+                if (eposta_yapilandirildi_mi()) {
+                    eposta_dogrulama_gonder($kullanici['id'], $eposta);
+                    flash('E-posta kaydedildi. Doğrulama bağlantısı adresinize gönderildi.');
+                } else {
+                    flash('E-posta kaydedildi. (E-posta gönderimi yapılandırılmadığı için doğrulama iletisi gönderilemedi.)', 'uyari');
+                }
+            }
+        }
+    }
+
+    // ── Doğrulama e-postasını tekrar gönder ──────────────────
+    if ($islem === 'dogrulama_tekrar' && eposta_semasi_hazir_mi()) {
+        $st = $db->prepare("SELECT eposta, eposta_dogrulandi FROM kullanicilar WHERE id = ?");
+        $st->execute([$kullanici['id']]);
+        $bilgi = $st->fetch();
+
+        if (empty($bilgi['eposta'])) {
+            flash('Önce bir e-posta adresi kaydedin.', 'hata');
+        } elseif ((int)$bilgi['eposta_dogrulandi'] === 1) {
+            flash('E-posta adresiniz zaten doğrulanmış.');
+        } elseif (!eposta_yapilandirildi_mi()) {
+            flash('E-posta gönderimi yapılandırılmamış.', 'hata');
+        } elseif (!hiz_limiti_gec('eposta_dogrulama:' . $kullanici['id'], 3, 900)) {
+            flash('Çok fazla istek gönderdiniz. Lütfen 15 dakika sonra tekrar deneyin.', 'hata');
+        } else {
+            eposta_dogrulama_gonder($kullanici['id'], $bilgi['eposta']);
+            flash('Doğrulama bağlantısı tekrar gönderildi.');
         }
     }
 
@@ -97,6 +146,63 @@ include 'includes/header.php';
       </div>
     </form>
   </div>
+
+  <?php if (eposta_semasi_hazir_mi()): ?>
+  <?php
+    $eposta_mevcut  = (string)($info['eposta'] ?? '');
+    $eposta_onayli  = (int)($info['eposta_dogrulandi'] ?? 0) === 1;
+  ?>
+  <div class="card" style="margin-bottom:24px">
+    <div class="card-header">
+      <span>✉️ E-posta Adresi</span>
+      <?php if ($eposta_mevcut !== ''): ?>
+        <span class="badge badge-<?= $eposta_onayli ? 'success' : 'warning' ?>">
+          <?= $eposta_onayli ? '✓ Doğrulandı' : '⏳ Doğrulanmadı' ?>
+        </span>
+      <?php endif; ?>
+    </div>
+
+    <?php if (!eposta_yapilandirildi_mi()): ?>
+      <div class="alert alert-error" style="margin:0 0 14px">
+        ⚠ Sunucuda e-posta gönderimi yapılandırılmamış. Adres kaydedebilirsiniz ancak
+        doğrulama ve şifre sıfırlama iletileri gönderilemez.
+      </div>
+    <?php elseif ($eposta_mevcut === ''): ?>
+      <div class="alert alert-error" style="margin:0 0 14px">
+        ⚠ Hesabınıza kayıtlı e-posta adresi yok. Şifrenizi unutursanız hesabınızı
+        kurtarmanın bir yolu olmaz — lütfen bir adres ekleyin.
+      </div>
+    <?php elseif (!$eposta_onayli): ?>
+      <div class="alert alert-error" style="margin:0 0 14px">
+        ⚠ Adresiniz henüz doğrulanmadı. Şifre sıfırlama yalnızca <strong>doğrulanmış</strong>
+        adrese gönderilir. Gelen kutunuzu (ve spam klasörünü) kontrol edin.
+      </div>
+    <?php endif; ?>
+
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+      <input type="hidden" name="islem" value="eposta_kaydet">
+      <div class="form-grid">
+        <div class="form-group full-width">
+          <label>E-posta Adresi</label>
+          <input type="email" name="eposta" class="input" value="<?= e($eposta_mevcut) ?>"
+                 placeholder="ornek@mail.com" required>
+        </div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+        <button type="submit" class="btn btn-primary">💾 Kaydet</button>
+      </div>
+    </form>
+
+    <?php if ($eposta_mevcut !== '' && !$eposta_onayli && eposta_yapilandirildi_mi()): ?>
+    <form method="post" style="margin-top:10px">
+      <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+      <input type="hidden" name="islem" value="dogrulama_tekrar">
+      <button type="submit" class="btn btn-ghost btn-sm">↻ Doğrulama bağlantısını tekrar gönder</button>
+    </form>
+    <?php endif; ?>
+  </div>
+  <?php endif; ?>
 
   <div class="card">
     <div class="card-header"><span>🔑 Şifre Değiştir</span></div>
