@@ -56,6 +56,7 @@ $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
   <?php endif; ?>
   <script src="/assets/pwa-install.js" defer></script>
   <script src="/assets/kirpici.js" defer></script>
+  <script src="/assets/onizleme.js" defer></script>
 </head>
 <body data-theme="<?= e($kullanici['tema'] ?? 'koyu') ?>">
 

@@ -62,4 +62,8 @@ if (!$dosya) {
 
 denetim_yaz('belge_indirildi', $tablo_adi, $id);
 
-dosya_akit($dosya['yol'], $dosya['orijinal_ad'], $dosya['mime'] ?: 'application/octet-stream');
+// Gerçek (finfo doğrulamalı) raster görsel türleri sekmede/önizlemede
+// gösterilir — küçük resim ve "tıkla, büyüt" penceresi bunu kullanır.
+// Diğer her tür (pdf, doc, xls...) her zaman indirme olarak sunulur.
+dosya_akit($dosya['yol'], $dosya['orijinal_ad'], $dosya['mime'] ?: 'application/octet-stream',
+           ek_onizlenebilir_mi($dosya['mime']));
