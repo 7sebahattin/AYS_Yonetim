@@ -1,14 +1,21 @@
 <?php
 // ============================================================
-//  yonetim/giris.php — PANEL GİRİŞİ (ŞİFRE + ZORUNLU 2FA)
+//  yonetim/giris.php — PANEL GİRİŞİ (ŞİFRE + İSTEĞE BAĞLI 2FA)
 //
 //  Uygulama girişinden AYRI bir yoldur. Buradan geçen kişi tüm
 //  kiracıların mali ve kişisel verisine erişir; bu yüzden:
-//   · şifre doğrulaması + TOTP kodu (veya yedek kod) zorunlu
 //   · agresif hız sınırlama (IP ve kullanıcı adı bazlı)
 //   · başarısız/başarılı her deneme denetim kaydına
 //   · hata mesajları hangi adımın yanlış olduğunu SIZDIRMAZ
 //     (kullanıcı adı sayımına ve rol keşfine kapalı)
+//
+//  2FA HESAP BAZINDA: Bir hesapta TOTP kuruluysa (totp_aktif=1) kod
+//  zorunlu ve doğrulanır — kurulu hesaplar için koruma AYNI kalır.
+//  Kurulu değilse şifre tek başına yeterlidir; bu durum
+//  'yonetim_giris_2fa_atlandi' olarak ayrıca denetime yazılır ki
+//  hangi oturumların 2FA'sız açıldığı /yonetim/denetim.php'den
+//  görülebilsin. 2FA kurmak isteyen hesap /yonetim/iki_faktor.php'yi
+//  kullanmaya devam edebilir.
 // ============================================================
 
 require_once __DIR__ . '/../config.php';
@@ -32,6 +39,27 @@ if (($_GET['mesaj'] ?? '') === 'yetki_yok') {
 }
 if (($_GET['mesaj'] ?? '') === 'cikis') {
     $bilgi = 'Yönetim oturumu kapatıldı.';
+}
+
+// Panel oturumunu başlatır ve /yonetim/'e yönlendirir. Hem 2FA'lı hem
+// 2FA'sız girişten çağrıldığı için tek yerde tutulur — iki ayrı kopya
+// oturum kurulumunda (session_regenerate_id, son_islem damgası vb.)
+// er ya da geç birbirinden sapardı.
+function panele_oturum_ac(int $kullanici_id, bool $yedek_kod_kullanildi): never
+{
+    session_regenerate_id(true);
+    $_SESSION['yonetim_id']       = $kullanici_id;
+    $_SESSION['yonetim_baslangic'] = time();
+    unset($_SESSION['kimlik_burunme']);
+
+    db()->prepare("UPDATE kullanicilar SET son_giris = NOW() WHERE id = ?")
+        ->execute([$kullanici_id]);
+
+    denetim_yaz('yonetim_giris_basarili', 'platform', $kullanici_id,
+                ['yedek_kod' => $yedek_kod_kullanildi], $kullanici_id);
+
+    header('Location: /yonetim/');
+    exit;
 }
 
 $sema_hazir = platform_semasi_hazir_mi();
@@ -66,20 +94,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $sema_hazir) {
         $sifre_dogru = $k && password_verify($sifre, $k['sifre_hash']);
         $yetkili     = $k && platform_yetkili_mi($k['platform_rolu']);
 
+        $twofa_kurulu = (int)($k['totp_aktif'] ?? 0) === 1 && !empty($k['totp_gizli']);
+
         if (!$sifre_dogru || !$yetkili) {
             // Tek ve aynı mesaj: "böyle bir kullanıcı yok", "şifre yanlış"
             // ve "bu hesabın panel yetkisi yok" ayrımı yapılmaz.
             denetim_yaz('yonetim_giris_basarisiz', 'platform', $k['id'] ?? null,
                         ['ad' => $kullanici_adi, 'sebep' => $sifre_dogru ? 'yetkisiz' : 'kimlik']);
             $hata = 'Giriş bilgileri hatalı.';
-        } elseif ((int)$k['totp_aktif'] !== 1 || empty($k['totp_gizli'])) {
-            // 2FA kurulmamış bir süper admin hesabı panele alınmaz.
-            // Kurulum, uygulama içindeki /yonetim/iki_faktor.php ile
-            // yapılır ve oraya girmek için de normal oturum gerekir —
-            // yani hesabın sahibi olduğunu ayrıca kanıtlamış olur.
-            denetim_yaz('yonetim_giris_2fa_yok', 'platform', (int)$k['id']);
-            $hata = 'Bu hesapta iki faktörlü doğrulama kurulu değil. '
-                  . 'Önce uygulamaya girip Yönetim → İki Faktör adımını tamamlayın.';
+        } elseif (!$twofa_kurulu) {
+            // 2FA bu hesapta kurulu değil: şifre tek başına yeterli.
+            // Bu, denetime AYRICA yazılır ki hangi oturumların 2FA'sız
+            // açıldığı /yonetim/denetim.php'den izlenebilsin.
+            denetim_yaz('yonetim_giris_2fa_atlandi', 'platform', (int)$k['id']);
+            panele_oturum_ac((int)$k['id'], false);
         } elseif ($kod === '') {
             $hata = 'Doğrulama kodu zorunludur.';
         } else {
@@ -101,20 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $sema_hazir) {
                     db()->prepare("UPDATE kullanicilar SET totp_son_adim = ? WHERE id = ?")
                         ->execute([$adim, $k['id']]);
                 }
-
-                session_regenerate_id(true);
-                $_SESSION['yonetim_id']       = (int)$k['id'];
-                $_SESSION['yonetim_baslangic'] = time();
-                unset($_SESSION['kimlik_burunme']);
-
-                db()->prepare("UPDATE kullanicilar SET son_giris = NOW() WHERE id = ?")
-                    ->execute([$k['id']]);
-
-                denetim_yaz('yonetim_giris_basarili', 'platform', (int)$k['id'],
-                            ['yedek_kod' => $yedek_kullanildi], (int)$k['id']);
-
-                header('Location: /yonetim/');
-                exit;
+                panele_oturum_ac((int)$k['id'], $yedek_kullanildi);
             }
         }
     }
@@ -160,11 +175,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $sema_hazir) {
         <input type="password" name="sifre" autocomplete="current-password" required>
       </label>
       <label>
-        Doğrulama Kodu
+        Doğrulama Kodu <span style="opacity:.6;font-weight:400">(2FA kuruluysa)</span>
         <input type="text" name="kod" inputmode="numeric" autocomplete="one-time-code"
-               placeholder="6 haneli kod veya yedek kod" required>
-        <small>Doğrulayıcı uygulamanızdaki 6 haneli kod. Telefonunuza erişemiyorsanız
-               yedek kodlarınızdan birini girin.</small>
+               placeholder="6 haneli kod veya yedek kod">
+        <small>Hesabınızda iki faktörlü doğrulama kuruluysa buraya kodu girin.
+               Kurulu değilse boş bırakabilirsiniz.</small>
       </label>
       <button type="submit">Panele Gir</button>
     </form>
