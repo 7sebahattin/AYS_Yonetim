@@ -20,7 +20,7 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 - **Karar defteri / belge arşivi**: toplantı kararları (katılım oranı, oy dağılımı), belge yükleme, karar-belge bağlantısı — dijital yedek, yasal aslın yerine geçmez
 - **Aidat dışı gelirler**: kira, gecikme cezası, bağış, demirbaş satışı
 - **Resmi bilanço / yıl sonu kapanışı**: açılış bakiyesi, gelir-gider özeti, daire bazlı borç listesi, kategori kırılımı, önceki yılla karşılaştırma, A4 yazdırma, otomatik devir zinciriyle yıl kapatma
-- **Platform yönetim paneli** (`/yonetim/`): tüm siteler, kullanıcılar, denetim kaydı, sistem duyuruları, tanıtım sayfası içeriği ve bakım modu — zorunlu iki faktörlü doğrulama arkasında
+- **Platform yönetim paneli** (`/yonetim/`): tüm siteler, kullanıcılar, denetim kaydı, sistem duyuruları, tanıtım sayfası içeriği ve bakım modu — hesap bazında isteğe bağlı iki faktörlü doğrulama ile
 
 ## Klasör Yapısı
 
@@ -53,7 +53,7 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 ├─ goc.php                → Şema göçü (web arayüzü, anahtarla korumalı)
 ├─ yonetim/               → Platform yönetim paneli (süper admin)
 │  ├─ ortak.php            → Panel önyükleme + yetki bekçisi
-│  ├─ giris.php            → Ayrı giriş yolu (şifre + zorunlu 2FA)
+│  ├─ giris.php            → Ayrı giriş yolu (şifre + hesap bazında isteğe bağlı 2FA)
 │  ├─ index.php            → Platform istatistikleri
 │  ├─ siteler.php / site_detay.php → Tüm siteler, askıya alma, destek işlemleri
 │  ├─ kullanicilar.php     → Platform rolü, şifre sıfırlama, 2FA sıfırlama
@@ -304,14 +304,21 @@ bilinmeli. İlk atama yapıldığı anda sayfa kendini kapatır.
 Son süper adminin yetkisi ne panelden ne CLI'dan kaldırılabilir: panele girecek kimse
 kalmazdı ve rol atamak için de panel gerekirdi — sistem kendini kilitlerdi.
 
-### Zorunlu iki faktörlü doğrulama (TOTP)
+### İki faktörlü doğrulama (TOTP) — hesap bazında
 
 Panel tüm kiracıların mali ve kişisel verisine eriştiği için tek şifreyle korunması
-kabul edilmedi. `includes/totp.php` bağımlılıksız bir RFC 6238 uygulamasıdır
-(Google Authenticator, Authy, Microsoft Authenticator ile uyumlu; RFC test
-vektörlerine karşı doğrulanmıştır).
+idealde önerilmez; bu yüzden `includes/totp.php` bağımlılıksız bir RFC 6238
+uygulamasıdır (Google Authenticator, Authy, Microsoft Authenticator ile uyumlu; RFC
+test vektörlerine karşı doğrulanmıştır) ve her platform yetkilisi hesabına eklenebilir.
 
-- **2FA kurulu olmayan hesap panele alınmaz** — şifre doğru olsa bile.
+> **Not:** 2FA hesap bazında isteğe bağlıdır — kurulmamış bir hesap panele yalnızca
+> şifreyle girebilir. Bu, bilinçli bir esneklik kararıdır (canlıya geçiş sırasında
+> doğrulayıcı uygulama kurmadan hızlı erişim ihtiyacı için); **güvenlik açısından en
+> güçlü kurulum, her platform yetkilisinin 2FA'yı etkinleştirmesidir.** Bir hesapta 2FA
+> etkinse (`totp_aktif=1`) kod her zaman zorunludur ve doğrulanır — bu durum değişmedi.
+> Hangi oturumların 2FA'sız açıldığı `yonetim_giris_2fa_atlandi` eylemiyle
+> `/yonetim/denetim.php`'den izlenebilir.
+
 - Kurulum `/yonetim/iki_faktor.php` üzerinden yapılır ve bilinçli olarak **normal
   uygulama oturumu** ister, panel oturumu değil: aksi halde 2FA'yı kurmak için panele,
   panele girmek için 2FA'ya ihtiyaç duyulan kapalı bir döngü oluşurdu.
@@ -630,7 +637,7 @@ bilanço) menüde görünmez, doğrudan açılırsa bilgilendirme gösterir.
 - Uygulama giriş formunda (`login.php`) kaba kuvvet koruması yok; hız sınırlama şimdilik yalnızca şifre sıfırlama ve yönetim panelinde uygulanıyor.
 - ~~Şifre sıfırlama (e-posta ile) akışı yok.~~ → Eklendi, bkz. "Şifre Sıfırlama & E-posta Doğrulama".
 - Minimum şifre uzunluğu 6 karakterdir, karmaşıklık zorunluluğu yoktur.
-- İki faktörlü doğrulama yalnızca platform yetkilileri için zorunludur; normal kullanıcılara henüz sunulmuyor (altyapı `includes/totp.php` içinde hazır).
+- İki faktörlü doğrulama yalnızca platform yetkilileri için sunuluyor ve hesap bazında isteğe bağlı; normal kullanıcılara henüz hiç sunulmuyor (altyapı `includes/totp.php` içinde hazır).
 
 ## Şema Göçü (Migration)
 
