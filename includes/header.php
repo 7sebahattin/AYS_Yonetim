@@ -55,6 +55,7 @@ $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
   <link rel="stylesheet" href="/assets/yonetim.css?v=1">
   <?php endif; ?>
   <script src="/assets/pwa-install.js" defer></script>
+  <script src="/assets/kirpici.js" defer></script>
 </head>
 <body data-theme="<?= e($kullanici['tema'] ?? 'koyu') ?>">
 
@@ -74,7 +75,7 @@ $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
 <!-- ══ DESKTOP SIDEBAR ══════════════════════════════════════ -->
 <aside class="sidebar">
   <a href="/dashboard.php" class="sidebar-brand" aria-label="Panele git">
-    <div class="brand-icon">🏢</div>
+    <div class="brand-icon"><img src="/assets/icons/icon-192.png" alt="AYS logosu"></div>
     <div>
       <div class="brand-name"><?= e_buyuk($kullanici['apartman_adi']) ?></div>
       <div class="brand-user"><?= e($kullanici['kullanici_adi']) ?></div>
@@ -116,7 +117,7 @@ $more_active = in_array($aktif_sayfa, array_column($more_pages, 'dosya'));
 <!-- ══ MOBİL TOPBAR ════════════════════════════════════════ -->
 <header class="mobile-topbar">
   <a href="/dashboard.php" class="mobile-topbar-brand" aria-label="Panele git">
-    <div class="mobile-brand-icon">🏢</div>
+    <div class="mobile-brand-icon"><img src="/assets/icons/icon-192.png" alt="AYS logosu"></div>
     <div>
       <div class="mobile-brand-text"><?= e_buyuk($kullanici['apartman_adi']) ?></div>
       <div class="mobile-brand-sub"><?= e($kullanici['kullanici_adi']) ?></div>

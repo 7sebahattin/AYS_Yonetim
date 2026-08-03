@@ -129,7 +129,7 @@ $avantajlar = [
 <header class="lp-nav">
   <div class="lp-container lp-nav-inner">
     <a href="/" class="lp-brand" aria-label="AYS ana sayfa">
-      <span class="lp-brand-icon">🏢</span>
+      <span class="lp-brand-icon"><img src="/assets/icons/icon-192.png" alt="AYS logosu"></span>
       <span class="lp-brand-text">AYS</span>
     </a>
     <nav class="lp-nav-links" aria-label="Bölümler">
@@ -257,7 +257,7 @@ $avantajlar = [
   <div class="lp-container lp-footer-inner">
     <div class="lp-footer-brand">
       <a href="/" class="lp-brand">
-        <span class="lp-brand-icon">🏢</span>
+        <span class="lp-brand-icon"><img src="/assets/icons/icon-192.png" alt="AYS logosu"></span>
         <span class="lp-brand-text">AYS</span>
       </a>
       <p class="lp-footer-desc">

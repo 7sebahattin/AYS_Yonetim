@@ -313,6 +313,31 @@ function hedefin_eklerini_sil(int $site_id, string $hedef_tur, int $hedef_id): v
         ->execute([$site_id, $hedef_tur, $hedef_id]);
 }
 
+// Göç 007 uygulanmış mı? 'ekler.hedef_tur' ENUM'una 'gider'/'aidat'
+// eklenmeden bu değerlerle INSERT denemek veritabanı hatası verir;
+// bu yüzden gider/aidat ekranları fiş yükleme alanını yalnızca göç
+// uygulandıktan sonra gösterir. Yeni bir sütun oluşmadığı için
+// varlık sorgusu değil, ENUM tanımının içeriği kontrol edilir —
+// 'gider' henüz geçerli bir değer değilken WHERE ile arasak sessizce
+// sıfır satır dönerdi, hata vermezdi.
+function gider_fisi_semasi_hazir_mi(): bool
+{
+    static $hazir = null;
+    if ($hazir !== null) return $hazir;
+    if (!operasyon_semasi_hazir_mi()) return $hazir = false;
+    try {
+        $st = db()->query("
+            SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ekler' AND COLUMN_NAME = 'hedef_tur'
+        ");
+        $tip = (string)$st->fetchColumn();
+        $hazir = str_contains($tip, "'gider'");
+    } catch (Throwable $ex) {
+        $hazir = false;
+    }
+    return $hazir;
+}
+
 function boyut_okunabilir(?int $bayt): string
 {
     $bayt = (int)$bayt;

@@ -73,10 +73,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($mevcut) {
             $db->prepare("UPDATE aidatlar SET durum='odendi', tutar=?, odeme_tarihi=?, dekont_no=?, notlar=? WHERE id=?")
                ->execute([$tutar, $odeme_tarihi, $dekont_no, $notlar, $mevcut['id']]);
+            $aidat_id = (int)$mevcut['id'];
         } else {
             $db->prepare("INSERT INTO aidatlar (site_id, daire_id, donem, tutar, durum, odeme_tarihi, dekont_no, notlar)
                           VALUES (?,?,?,?,'odendi',?,?,?)")
                ->execute([$kullanici['site_id'], $daire_id, $donem, $tutar, $odeme_tarihi, $dekont_no, $notlar]);
+            $aidat_id = (int)$db->lastInsertId();
+        }
+        // Dekont/makbuz fotoğrafı: göç 007 uygulanmadıysa alan zaten
+        // arayüzde gösterilmez, burada da sessizce atlanır.
+        if (gider_fisi_semasi_hazir_mi()) {
+            ekleri_yukle((int)$kullanici['site_id'], 'aidat', $aidat_id, (int)$kullanici['id']);
         }
         flash("Ödeme kaydedildi.");
     }
@@ -84,7 +91,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($islem === 'sil') {
         $id = (int)$_POST['aidat_id'];
         $db->prepare("DELETE FROM aidatlar WHERE id=? AND site_id=?")->execute([$id, $kullanici['site_id']]);
+        if (gider_fisi_semasi_hazir_mi()) {
+            hedefin_eklerini_sil((int)$kullanici['site_id'], 'aidat', $id);
+        }
         flash('Kayıt silindi.');
+    }
+
+    if ($islem === 'ek_sil') {
+        // Dekont listesinden tek bir eki kaldırır; aidat kaydının kendisine dokunmaz.
+        ek_sil((int)$kullanici['site_id'], (int)($_POST['ek_id'] ?? 0));
+        header("Location: /aidatlar.php?donem=$donem&odeme=" . (int)($_POST['daire_no'] ?? 0));
+        exit;
     }
 
     header("Location: /aidatlar.php?donem=$donem");
@@ -116,10 +133,29 @@ $liste = array_filter($tum_daireler, function($r) use ($filtre) {
 $toplam_tahsilat = array_sum(array_column(array_filter($tum_daireler, fn($r) => ($r['durum'] ?? '') === 'odendi'), 'tutar'));
 $odenen_say = count(array_filter($tum_daireler, fn($r) => ($r['durum'] ?? '') === 'odendi'));
 
+// Dekont/makbuz sayıları: liste tablosunda rozet göstermek için tek
+// sorguda toplu çekilir — satır başına ayrı sorgu atmaktan kaçınılır.
+$fis_sayilari = [];
+if (gider_fisi_semasi_hazir_mi()) {
+    $aidat_idler = array_filter(array_column($tum_daireler, 'aidat_id'));
+    if ($aidat_idler) {
+        $yer_tutucular = implode(',', array_fill(0, count($aidat_idler), '?'));
+        $stmt = $db->prepare("SELECT hedef_id, COUNT(*) AS say FROM ekler
+                              WHERE site_id=? AND hedef_tur='aidat' AND hedef_id IN ($yer_tutucular)
+                              GROUP BY hedef_id");
+        $stmt->execute([$kullanici['site_id'], ...$aidat_idler]);
+        foreach ($stmt->fetchAll() as $r) $fis_sayilari[(int)$r['hedef_id']] = (int)$r['say'];
+    }
+}
+
 $duzenle_daire = null;
+$duzenle_ekler = [];
 if ($hizli_daire_no) {
     foreach ($tum_daireler as $r) {
         if ($r['daire_no'] == $hizli_daire_no) { $duzenle_daire = $r; break; }
+    }
+    if ($duzenle_daire && $duzenle_daire['aidat_id'] && gider_fisi_semasi_hazir_mi()) {
+        $duzenle_ekler = ekleri_getir((int)$kullanici['site_id'], 'aidat', (int)$duzenle_daire['aidat_id']);
     }
 }
 
@@ -207,7 +243,14 @@ include 'includes/header.php';
       <td><?= $r['sakin_adi'] ? e_buyuk($r['sakin_adi']) : '—' ?></td>
       <td><?= para((float)($r['tutar'] ?? $r['aylik_aidat'])) ?></td>
       <td><?= tarih_format($r['odeme_tarihi'] ?? '') ?></td>
-      <td><?= $r['dekont_no'] ? e_buyuk($r['dekont_no']) : '—' ?></td>
+      <td>
+        <?= $r['dekont_no'] ? e_buyuk($r['dekont_no']) : '—' ?>
+        <?php if ($r['aidat_id'] && !empty($fis_sayilari[$r['aidat_id']])): ?>
+          <a href="?donem=<?= e($donem) ?>&odeme=<?= e($r['daire_no']) ?>" class="fis-rozeti" title="Dekont/makbuz eklendi">
+            📎 <?= (int)$fis_sayilari[$r['aidat_id']] ?>
+          </a>
+        <?php endif; ?>
+      </td>
       <td>
         <span class="badge badge-<?= $durum === 'odendi' ? 'success' : ($durum === 'gecikme' ? 'danger' : 'warning') ?>">
           <?= $durum === 'odendi' ? '✓ Ödendi' : ($durum === 'gecikme' ? '! Gecikme' : '⏳ Bekliyor') ?>
@@ -245,7 +288,7 @@ $modal_display = $modal_daire ? 'flex' : 'none';
       <h3>💰 Ödeme Kaydet — <?= e(donem_adi($donem)) ?></h3>
       <a href="/aidatlar.php?donem=<?= e($donem) ?>" class="modal-close">×</a>
     </div>
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
       <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
       <input type="hidden" name="islem" value="odeme_kaydet">
       <div class="form-grid">
@@ -284,12 +327,43 @@ $modal_display = $modal_daire ? 'flex' : 'none';
                  value="<?= e($modal_daire['notlar'] ?? '') ?>"
                  placeholder="Ek not...">
         </div>
+        <?php if (gider_fisi_semasi_hazir_mi()): ?>
+        <div class="form-group full-width">
+          <label>Dekont / Makbuz Fotoğrafı</label>
+          <input type="file" name="ekler[]" class="input" multiple data-kirpici
+                 accept=".jpg,.jpeg,.png,.webp,.pdf">
+          <small class="muted">Fotoğraf seçildiğinde kırpma penceresi açılır — kenarları
+            kırpıp temiz bir görsel kaydedebilirsiniz. En fazla <?= round(DOSYA_MAX_BOYUT / 1048576) ?> MB.</small>
+        </div>
+        <?php endif; ?>
       </div>
       <div class="modal-footer">
         <button type="submit" class="btn btn-primary">💾 Kaydet</button>
         <a href="/aidatlar.php?donem=<?= e($donem) ?>" class="btn btn-ghost">İptal</a>
       </div>
     </form>
+    <?php if ($duzenle_ekler): ?>
+    <div class="form-grid" style="padding:0 20px 20px">
+      <div class="form-group full-width">
+        <label>Kayıtlı Dekontlar</label>
+        <ul class="ek-listesi">
+          <?php foreach ($duzenle_ekler as $ek): ?>
+          <li>
+            <a href="/belge_indir.php?id=<?= (int)$ek['id'] ?>" target="_blank" rel="noopener">📎 <?= e($ek['orijinal_ad']) ?></a>
+            <span class="muted"><?= e(boyut_okunabilir((int)$ek['boyut'])) ?></span>
+            <form method="post" style="display:inline">
+              <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+              <input type="hidden" name="islem" value="ek_sil">
+              <input type="hidden" name="ek_id" value="<?= (int)$ek['id'] ?>">
+              <input type="hidden" name="daire_no" value="<?= (int)$modal_daire['daire_no'] ?>">
+              <button type="submit" class="btn btn-sm btn-danger" data-confirm="Bu dekont silinsin mi?">✕</button>
+            </form>
+          </li>
+          <?php endforeach; ?>
+        </ul>
+      </div>
+    </div>
+    <?php endif; ?>
   </div>
 </div>
 

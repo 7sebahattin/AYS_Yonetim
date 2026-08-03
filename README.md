@@ -8,6 +8,9 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
 - **Çoklu site / çoklu blok**: bir kullanıcı birden fazla apartman veya site yönetebilir, aralarında tek tıkla geçiş yapar; her site bloklara (A Blok, B Blok…) ayrılabilir
 - Daire yönetimi (ekle/düzenle/sil, blok ataması, sakin bilgisi, aylık aidat tutarı)
 - Dönem bazlı aidat/ödeme takibi, toplu dönem oluşturma, toplu/tekil ödeme girişi
+- **Fiş/fatura ve dekont fotoğrafı**: gider kayıtlarına ve aidat ödemelerine, tarayıcıda
+  kırpılmış temiz bir fotoğraf ya da ekran görüntüsü eklenebilir — kağıt belgeler dijital
+  arşivde saklanır
 - WhatsApp üzerinden sakine borç/ödeme durumu mesajı hazırlama
 - Kategori bazlı gider takibi; kategori girişi serbest metin + öneri listesi (yazınca eşleşenler listelenir, eşleşme yoksa "ekle" seçeneği çıkar, her kullanıcı kendi kategori geçmişinden sorumludur)
 - Dashboard ve raporlar (tahsilat oranı, 12 aylık gelir/gider trendi)
@@ -96,6 +99,7 @@ Küçük/orta ölçekli apartman ve site yönetimleri için PHP tabanlı, çok k
    ├─ style.css            → Panel stilleri (mobil dahil)
    ├─ landing.css           → Tanıtım sayfası stilleri
    ├─ pwa-install.js        → SW kaydı + "Uygulamayı Yükle" banner'ı
+   ├─ kirpici.js             → Fiş/dekont fotoğrafı kırpma aracı (gider/aidat ekleri)
    └─ icons/                → PWA/apple-touch/favicon ikonları
 ```
 
@@ -529,6 +533,60 @@ kurulmaz.
 `operasyon_semasi_hazir_mi()` kontrolü sayesinde uygulama göç 005 uygulanmadan da
 çalışır: üç modül menüde görünmez, doğrudan açılırsa bilgilendirme gösterir, gider
 ekranı eski davranışına döner.
+
+## Gider Fişi ve Aidat Dekontu (Fotoğraf Ekleri)
+
+> Göç: `semalar/007_gider_aidat_fis.sql`
+
+Kağıt fiş/fatura ve dekontların fotoğrafı ya da ekran görüntüsü, `giderler.php`'de
+her gider satırına ve `aidatlar.php`'de her ödeme kaydına eklenebilir. Yeni bir tablo
+kurulmaz — Faz 4'ün `ekler` altyapısı (`includes/operasyon.php`, `belge_indir.php`)
+yeniden kullanılır; göç yalnızca `ekler.hedef_tur` ENUM'una `'gider'` ve `'aidat'`
+değerlerini ekler.
+
+### Kırpma aracı — `assets/kirpici.js`
+
+Telefonla çekilen fiş fotoğraflarında kenarda masa, el ya da fazladan alan kalması
+yaygındır. Bir `<input type="file" data-kirpici>` alanına resim seçildiğinde
+(yalnızca `image/jpeg|png|webp` — PDF olduğu gibi geçer) tarayıcıda bir kırpma
+penceresi açılır:
+
+- Saf JavaScript, kütüphane yok. Fare ve dokunmatiği Pointer Events API ile tek koddan
+  yönetir; köşe tutamaçlarından yeniden boyutlandırma, ortadan sürükleyerek taşıma ve
+  90°'lik döndürme desteklenir.
+- EXIF döndürme bilgisi `createImageBitmap(dosya, {imageOrientation:'from-image'})`
+  ile tarayıcının kendisine uygulattırılır (desteklenmiyorsa `Image()`'e düşülür).
+- **İki çözünürlük:** etkileşim sırasında küçültülmüş bir kopya gösterilir (akıcı
+  sürükleme için); onay anında kırpma **orijinal çözünürlüklü kaynaktan** alınır ve
+  uzun kenarı 1600px'i aşıyorsa oranlı küçültülür. Kalite kaybı yalnızca bu dışa
+  aktarım sınırından kaynaklanır.
+- Sonuç `canvas.toBlob('image/jpeg', 0.85)` ile üretilir ve `DataTransfer` API'siyle
+  **aynı** `<input>` alanına geri yazılır — formun normal `multipart/form-data`
+  gönderim akışı hiç değişmez, sunucu tarafı kırpılmış mı yoksa doğrudan seçilmiş mi
+  olduğunu bilmez/bilmesi gerekmez.
+- Kullanıcı "İptal" derse seçim tamamen temizlenir; script tüm sayfalarda yüklenir
+  (`includes/header.php`) ama yalnızca `data-kirpici` işaretli alanlara bağlanır.
+
+### Ekleme, listeleme, silme
+
+- Gider/aidat kaydı oluşturulduğunda/güncellendiğinde `ekleri_yukle()` ile
+  `ekler[]` alanındaki dosyalar işlenir (`hedef_tur='gider'` veya `'aidat'`).
+- Liste ekranlarında her satırda kaç fiş/dekont eklendiği 📎 rozetiyle gösterilir
+  (toplu tek sorguyla çekilir, satır başına ayrı sorgu atılmaz).
+- Düzenle/Ödeme Kaydet modallerinde kayıtlı ekler `belge_indir.php` üzerinden
+  indirilebilir ve tek tek silinebilir (`ek_sil`); site_id doğrulaması aynı
+  `belge_indir.php` bekçisinden geçer, çapraz kiracı erişimi mümkün değildir.
+- Bir gider ya da aidat kaydı silindiğinde `hedefin_eklerini_sil()` ile bağlı tüm
+  ekler (veritabanı satırı + diskteki dosya) birlikte temizlenir.
+
+### Göç uygulanmadan önce
+
+`gider_fisi_semasi_hazir_mi()`, göç 007'nin gerçekten uygulandığını `ekler.hedef_tur`
+sütununun ENUM tanımı içinde `'gider'` geçip geçmediğine bakarak anlar (yeni bir sütun
+oluşmadığı için varlık sorgusu yeterli değildir — `WHERE hedef_tur='gider'` henüz
+geçerli olmayan bir değerle sessizce sıfır satır dönerdi). Göç uygulanmadan dosya
+yükleme alanı arayüzde hiç gösterilmez; gider/aidat kayıtları eskisi gibi çalışmaya
+devam eder.
 
 ## Karar Defteri, Belge Arşivi ve Resmi Bilanço
 
