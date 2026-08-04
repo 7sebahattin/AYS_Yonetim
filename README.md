@@ -146,6 +146,37 @@ Uygulama ana ekrana yüklenip bağımsız bir uygulama gibi açılabilir.
   ağdan (network-only) yüklenir; çevrimdışıyken yalnızca jenerik `offline.html` gösterilir.
   Bu ayrım kasıtlıdır: aidat/gider gibi finansal verinin cihazda bayat veya güvenli
   olmayan şekilde önbellekte kalmasını önler.
+  `PRECACHE_URLS` listesinde **yalnızca adresi hiç değişmeyen** dosyalar vardır
+  (`manifest.json`, `offline.html`); CSS ve ikonlar bilerek dışarıda bırakılmıştır —
+  aşağıdaki "Statik varlık sürümleme" bölümüne bakın.
+
+### Statik varlık sürümleme (önbellek kırma)
+
+CSS/JS/ikon adresleri `varlik()` (bkz. `includes/varsayilanlar.php`) ile üretilir ve
+dosyanın değişiklik zamanını `?v=<filemtime>` olarak taşır:
+
+```php
+<link rel="stylesheet" href="<?= varlik('/assets/style.css') ?>">
+<!-- çıktı: /assets/style.css?v=1785825792 -->
+```
+
+**Neden otomatik:** Bu sürüm numarası önce elle tutuluyordu ve aynı hata iki kez
+yaşandı — dosyanın içeriği değişti, numarayı artırmak unutuldu, tarayıcı ve service
+worker eski kopyayı sunmaya devam etti. Birinci seferde logo eski haliyle göründü;
+ikinci seferde fiş küçük resmini ölçen CSS ulaşmadığı için fotoğraflar ham
+boyutlarıyla açılıp mobil düzeni dağıttı. "Sürümü artırmayı unutma" diye kod içine
+yazılan not bile bunu engellemeye yetmedi. Damga artık dosyanın kendisinden
+okunuyor: **içerik değişti = adres değişti = tarayıcı taze kopya çeker.**
+
+Bu yüzden `sw.js` içindeki `PRECACHE_URLS` de artık CSS/ikon **sabitlemiyor**:
+sürümsüz adresleri kurulum anında sabitlemek, staleness'ı service worker düzeyinde
+kalıcı hale getiren asıl mekanizmaydı. Bu dosyalar artık istendiklerinde (sürümlü
+adresleriyle) fetch işleyicisi tarafından önbelleğe alınır.
+
+> `manifest.json` statik bir dosya olduğu için içindeki ikon adresleri elle
+> sürümlenir. Bu yalnızca **kurulum anındaki** ana ekran ikonunu etkiler; zaten
+> kurulu bir PWA'nın kısayol ikonu hiçbir koşulda kendiliğinden güncellenmez,
+> kısayolun silinip yeniden eklenmesi gerekir.
 - **`assets/pwa-install.js`**: service worker'ı kaydeder ve tarayıcının
   `beforeinstallprompt` olayını yakalayıp alt kısımda bir "Uygulamayı Yükle" banner'ı
   gösterir. Kullanıcı kapatırsa tercih `localStorage`'da saklanır (14 gün boyunca tekrar
@@ -579,11 +610,18 @@ penceresi açılır:
 - Bir gider ya da aidat kaydı silindiğinde `hedefin_eklerini_sil()` ile bağlı tüm
   ekler (veritabanı satırı + diskteki dosya) birlikte temizlenir.
 - **Küçük resim + tam ekran önizleme:** gerçek (finfo doğrulamalı) JPEG/PNG/WEBP
-  ekler, listede küçük bir resim olarak gösterilir; tıklanınca `assets/onizleme.js`
-  (basit bir lightbox) görseli sayfa üzerinde büyük gösterir — yeni sekmeye gidip
-  indirme zorlamaz. Karar `ek_onizlenebilir_mi()` ile verilir ve `belge_indir.php`
-  bu türler için `Content-Disposition: inline` döner (diğer her tür — pdf, doc,
-  xls… — her zaman indirme olarak sunulmaya devam eder).
+  ekler, listede **48×48 px sabit** bir küçük resim olarak gösterilir; tıklanınca
+  `assets/onizleme.js` (basit bir lightbox) görseli sayfa üzerinde gösterir — yeni
+  sekmeye gidip indirme zorlamaz. Karar `ek_onizlenebilir_mi()` ile verilir ve
+  `belge_indir.php` bu türler için `Content-Disposition: inline` döner (diğer her
+  tür — pdf, doc, xls… — her zaman indirme olarak sunulmaya devam eder).
+- **Boyut sınırları iki katmanlı.** Küçük resmin ölçüsü hem CSS'te hem de `<img>`
+  etiketinin `width`/`height` özniteliğinde; büyütülmüş görselin sınırı
+  (`max-width: min(100%, 900px)`, `max-height: 88vh`) hem CSS'te hem de
+  `onizleme.js` içinde satır içi olarak veriliyor. Bu tekrar bilinçli: stil dosyası
+  bir kez eski sürümüyle önbellekten geldiğinde fotoğraflar ham boyutlarıyla açılıp
+  mobil düzeni dağıtmıştı — öznitelik/satır içi ölçüler bu senaryoda emniyet kemeri
+  görevi görür.
 
 ### Göç uygulanmadan önce
 

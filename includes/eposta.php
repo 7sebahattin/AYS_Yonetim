@@ -127,7 +127,8 @@ function eposta_sablonu(string $baslik, string $govde_html, string $buton_metni 
     }
     $baslik_g = htmlspecialchars($baslik, ENT_QUOTES, 'UTF-8');
     // E-posta istemcileri site kökünden göreli yol çözemez; mutlak URL şart.
-    $logo_url = rtrim(SITE_ADRESI, '/') . '/assets/icons/icon-192.png?v=2';
+    // varlik() göreli yolu sürümlü döndürür, başına mutlak adres eklenir.
+    $logo_url = rtrim(SITE_ADRESI, '/') . varlik('/assets/icons/icon-192.png');
 
     return <<<HTML
 <!DOCTYPE html>

@@ -353,7 +353,7 @@ $modal_display = $modal_daire ? 'flex' : 'none';
             <a href="/belge_indir.php?id=<?= (int)$ek['id'] ?>" class="ek-onizleme-baglanti"
                data-lightbox data-baslik="<?= e($ek['orijinal_ad']) ?>">
               <img src="/belge_indir.php?id=<?= (int)$ek['id'] ?>" alt="<?= e($ek['orijinal_ad']) ?>"
-                   class="ek-onizleme" loading="lazy">
+                   class="ek-onizleme" loading="lazy" width="48" height="48">
             </a>
             <?php endif; ?>
             <a href="/belge_indir.php?id=<?= (int)$ek['id'] ?>" target="_blank" rel="noopener">📎 <?= e($ek['orijinal_ad']) ?></a>

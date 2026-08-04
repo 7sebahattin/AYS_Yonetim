@@ -47,3 +47,21 @@ defined('DOSYA_MAX_BOYUT')    || define('DOSYA_MAX_BOYUT', 10 * 1024 * 1024); //
 // ─── Jeton ömürleri (saniye) ────────────────────────────────
 defined('SIFRE_SIFIRLAMA_OMRU')  || define('SIFRE_SIFIRLAMA_OMRU', 3600);      // 1 saat
 defined('EPOSTA_DOGRULAMA_OMRU') || define('EPOSTA_DOGRULAMA_OMRU', 172800);   // 48 saat
+
+// ─── Statik varlık adresi (otomatik önbellek kırma) ─────────
+// CSS/JS/ikon adresine dosyanın değişiklik zamanını ?v= olarak ekler.
+//
+// NEDEN OTOMATİK: Bu sürüm numarası önce ELLE tutuluyordu ve aynı hata
+// iki kez yaşandı — dosyanın içeriği değişti, numarayı güncellemek
+// unutuldu, tarayıcı ve service worker eski kopyayı sunmaya devam etti
+// (bir kez logo, bir kez fiş küçük resmi bu yüzden bozuk göründü; ikinci
+// seferde "sürümü artırmayı unutma" notunun kendisi bile yetmedi).
+// Damga dosyadan okunduğu için artık kimsenin bir şey hatırlaması
+// gerekmiyor: içerik değişti = adres değişti = tarayıcı taze kopya çeker.
+//
+// Bu dosya hem functions.php hem eposta.php tarafından yüklendiğinden
+// varlik() her bağlamda (panel, tanıtım sayfası, e-posta, cron) kullanılabilir.
+function varlik(string $yol): string {
+    $damga = @filemtime(dirname(__DIR__) . '/' . ltrim($yol, '/'));
+    return $yol . ($damga ? '?v=' . $damga : '');
+}

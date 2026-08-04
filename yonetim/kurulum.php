@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $sema_hazir && $mevcut === 0 && $an
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>Yönetim Kurulumu — AYS</title>
-  <link rel="stylesheet" href="/assets/yonetim.css?v=1">
+  <link rel="stylesheet" href="<?= varlik('/assets/yonetim.css') ?>">
 </head>
 <body class="y-giris-govde">
 <div class="y-giris-kart y-genis">

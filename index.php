@@ -94,8 +94,8 @@ $avantajlar = [
   <meta name="author" content="AYS">
   <link rel="canonical" href="<?= e($site_url) ?>/">
   <link rel="manifest" href="/manifest.json">
-  <link rel="icon" href="/assets/icons/favicon-32.png?v=2" sizes="32x32">
-  <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png?v=2">
+  <link rel="icon" href="<?= varlik('/assets/icons/favicon-32.png') ?>" sizes="32x32">
+  <link rel="apple-touch-icon" href="<?= varlik('/assets/icons/apple-touch-icon.png') ?>">
 
   <!-- Open Graph -->
   <meta property="og:type" content="website">
@@ -113,9 +113,9 @@ $avantajlar = [
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/style.css?v=2">
-  <link rel="stylesheet" href="/assets/landing.css?v=2">
-  <script src="/assets/pwa-install.js" defer></script>
+  <link rel="stylesheet" href="<?= varlik('/assets/style.css') ?>">
+  <link rel="stylesheet" href="<?= varlik('/assets/landing.css') ?>">
+  <script src="<?= varlik('/assets/pwa-install.js') ?>" defer></script>
 
   <script type="application/ld+json">
   <?= json_encode($jsonld, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?>
@@ -129,7 +129,7 @@ $avantajlar = [
 <header class="lp-nav">
   <div class="lp-container lp-nav-inner">
     <a href="/" class="lp-brand" aria-label="AYS ana sayfa">
-      <span class="lp-brand-icon"><img src="/assets/icons/icon-192.png?v=2" alt="AYS logosu"></span>
+      <span class="lp-brand-icon"><img src="<?= varlik('/assets/icons/icon-192.png') ?>" alt="AYS logosu"></span>
       <span class="lp-brand-text">AYS</span>
     </a>
     <nav class="lp-nav-links" aria-label="Bölümler">
@@ -257,7 +257,7 @@ $avantajlar = [
   <div class="lp-container lp-footer-inner">
     <div class="lp-footer-brand">
       <a href="/" class="lp-brand">
-        <span class="lp-brand-icon"><img src="/assets/icons/icon-192.png?v=2" alt="AYS logosu"></span>
+        <span class="lp-brand-icon"><img src="<?= varlik('/assets/icons/icon-192.png') ?>" alt="AYS logosu"></span>
         <span class="lp-brand-text">AYS</span>
       </a>
       <p class="lp-footer-desc">

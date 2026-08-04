@@ -32,6 +32,15 @@
         img.src = url;
         img.alt = baslik || '';
 
+        // Boyut sınırı satır içi de veriliyor: stil dosyası bir şekilde
+        // eski/eksik gelirse görsel ham boyutuyla açılıp ekranı taşırıyordu.
+        // Asıl kural style.css'te; buradaki yalnızca emniyet kemeri.
+        img.style.maxWidth  = 'min(100%, 900px)';
+        img.style.maxHeight = '88vh';
+        img.style.width     = 'auto';
+        img.style.height    = 'auto';
+        img.style.objectFit = 'contain';
+
         overlay.appendChild(img);
         overlay.appendChild(kapatBtn);
         document.body.appendChild(overlay);

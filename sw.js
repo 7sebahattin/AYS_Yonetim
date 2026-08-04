@@ -5,24 +5,19 @@
 //  önbelleklenmez — bunlar her zaman ağdan (network-only) alınır.
 // ============================================================
 
-// SÜRÜM NUMARASI: her statik varlık değişikliğinde artırılmalı. Bu değer
-// değişmeden sw.js'in kendisi (byte olarak) değişmezse tarayıcı "yeni bir
-// service worker sürümü var" diye algılamaz — install/activate hiç yeniden
-// çalışmaz ve PRECACHE_URLS'teki eski dosyalar süresiz önbellekte kalır.
-// Bu yüzden ikon/CSS güncellemesi yapılan her deploy'da hem burası hem de
-// aşağıdaki dosya yollarındaki ?v= sorgusu birlikte artırılır.
-const CACHE_VERSION = 'ays-static-v2';
+const CACHE_VERSION = 'ays-static-v3';
 
-// Kurulumda önceden önbelleğe alınacak, gerçekten statik dosyalar
+// Kurulumda YALNIZCA adresi hiç değişmeyen dosyalar önceden alınır.
+//
+// CSS ve ikonlar bilerek burada DEĞİL: eskiden buradaydılar ve sürümsüz
+// adreslerle (ör. '/assets/style.css') sabitlendikleri için, dosyanın
+// içeriği değiştiğinde service worker bunu göremiyor ve eski kopyayı
+// süresiz sunmaya devam ediyordu. Artık bu dosyaların adresi sunucu
+// tarafında varlik() ile ?v=<değişiklik-zamanı> taşıyor; içerik
+// değiştiğinde adres de değiştiği için aşağıdaki fetch işleyicisi
+// önbellekte bulamaz ve taze kopyayı çeker. Böylece "sürüm artırmayı
+// unutma" gibi bir kurala hiç ihtiyaç kalmıyor.
 const PRECACHE_URLS = [
-  '/assets/style.css?v=2',
-  '/assets/landing.css?v=2',
-  '/assets/print.css',
-  '/assets/icons/icon-192.png?v=2',
-  '/assets/icons/icon-512.png?v=2',
-  '/assets/icons/icon-maskable-192.png?v=2',
-  '/assets/icons/icon-maskable-512.png?v=2',
-  '/assets/icons/apple-touch-icon.png?v=2',
   '/manifest.json',
   '/offline.html',
 ];
