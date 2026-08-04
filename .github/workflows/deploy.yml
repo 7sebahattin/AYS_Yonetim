@@ -41,8 +41,16 @@ jobs:
           set ssl:verify-certificate no
           set ftp:passive-mode true
           set ftp:prefer-epsv false
-          set net:timeout 20
-          set net:max-retries 2
+          # Sunucu ara sıra bağlantıyı hiç yanıtlamıyor (banner bile
+          # gelmeden zaman aşımı). Eski ayar ~100 saniye sonra pes ediyor
+          # ve deploy geçici bir kesinti yüzünden başarısız oluyordu; bu
+          # bir kez yaşandı ve kod tamamen doğruyken canlıya çıkamadı.
+          # Denemeler arası artan bekleme ile toplam ~5 dakikaya çıkarıldı:
+          # kısa kesintileri atlatır, gerçek arızada yine de sonlanır.
+          set net:timeout 30
+          set net:max-retries 5
+          set net:reconnect-interval-base 8
+          set net:reconnect-interval-multiplier 1.5
           set cmd:fail-exit true
           debug 3
           pwd
