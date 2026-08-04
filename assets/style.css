@@ -581,28 +581,40 @@ body[data-theme="acik"] .donem-highlight {
 .ek-listesi a { color: var(--accent); text-decoration: none; word-break: break-all; }
 
 /* ── Ek görsel küçük resmi + tam ekran önizleme ───────────── */
-.ek-onizleme-baglanti { display: block; flex-shrink: 0; line-height: 0; }
+/* Küçük resim SABİT 48px. Ölçü hem burada hem de <img> etiketinin
+   width/height özniteliğinde veriliyor — stil dosyası bir şekilde eski
+   ya da eksik gelirse fotoğraf ham boyutuyla açılıp mobil düzeni
+   dağıtmasın (bu bir kez yaşandı). */
+.ek-onizleme-baglanti { display: block; flex: 0 0 auto; line-height: 0; }
 .ek-onizleme {
-    width: 44px; height: 44px; object-fit: cover; border-radius: 8px;
+    width: 48px; height: 48px; max-width: 48px; max-height: 48px;
+    object-fit: cover; border-radius: 8px;
     border: 1px solid var(--border); cursor: zoom-in; display: block;
 }
+/* Uzun dosya adı küçük resmi ya da sil düğmesini ekran dışına itmesin. */
+.ek-listesi li > a:not(.ek-onizleme-baglanti) { flex: 1 1 120px; min-width: 0; }
+
 .onizleme-overlay {
     position: fixed; inset: 0; z-index: 2100;
-    background: rgba(0, 0, 0, .86);
+    background: rgba(0, 0, 0, .88);
     display: flex; align-items: center; justify-content: center;
-    padding: 24px;
+    padding: 16px;
 }
+/* Büyütülmüş görselin sınırı: her zaman ekranın içinde kalır ve kendi
+   doğal boyutundan büyütülmez — küçük bir fişi bulanıklaşana kadar
+   esnetmek okunabilirliği artırmıyor, azaltıyor. */
 .onizleme-resim {
-    max-width: 100%; max-height: 100%; border-radius: 8px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+    max-width: min(100%, 900px); max-height: 88vh;
+    width: auto; height: auto; object-fit: contain;
+    border-radius: 8px; box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
 }
 .onizleme-kapat {
-    position: absolute; top: 18px; right: 22px;
-    width: 40px; height: 40px; border-radius: 50%; border: none;
-    background: rgba(255, 255, 255, .12); color: #fff; font-size: 24px;
+    position: absolute; top: 14px; right: 16px;
+    width: 44px; height: 44px; border-radius: 50%; border: none;
+    background: rgba(255, 255, 255, .16); color: #fff; font-size: 26px;
     line-height: 1; cursor: pointer;
 }
-.onizleme-kapat:hover { background: rgba(255, 255, 255, .22); }
+.onizleme-kapat:hover { background: rgba(255, 255, 255, .26); }
 
 /* ── Fiş/dekont rozeti (gider ve aidat listeleri) ─────────── */
 .fis-rozeti {

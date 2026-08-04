@@ -156,8 +156,8 @@ function yonetim_basla(array $yonetici, string $baslik): void
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#12121f">
   <title><?= e($baslik) ?> — AYS Yönetim</title>
-  <link rel="icon" href="/assets/icons/favicon-32.png?v=2" sizes="32x32">
-  <link rel="stylesheet" href="/assets/yonetim.css?v=1">
+  <link rel="icon" href="<?= varlik('/assets/icons/favicon-32.png') ?>" sizes="32x32">
+  <link rel="stylesheet" href="<?= varlik('/assets/yonetim.css') ?>">
 </head>
 <body>
 <div class="y-kabuk">

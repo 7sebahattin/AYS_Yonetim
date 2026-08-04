@@ -29,10 +29,10 @@ $oturum_acik = !empty($_SESSION['kullanici_id']);
   <meta name="theme-color" content="#0d0d1a">
   <title>E-posta Doğrulama — AYS</title>
   <meta name="robots" content="noindex, nofollow">
-  <link rel="icon" href="/assets/icons/favicon-32.png?v=2" sizes="32x32">
+  <link rel="icon" href="<?= varlik('/assets/icons/favicon-32.png') ?>" sizes="32x32">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/style.css?v=2">
+  <link rel="stylesheet" href="<?= varlik('/assets/style.css') ?>">
 </head>
 <body class="auth-body">
 

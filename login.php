@@ -196,12 +196,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta name="robots" content="noindex, follow">
   <link rel="canonical" href="/login.php">
   <link rel="manifest" href="/manifest.json">
-  <link rel="icon" href="/assets/icons/favicon-32.png?v=2" sizes="32x32">
-  <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png?v=2">
+  <link rel="icon" href="<?= varlik('/assets/icons/favicon-32.png') ?>" sizes="32x32">
+  <link rel="apple-touch-icon" href="<?= varlik('/assets/icons/apple-touch-icon.png') ?>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/style.css?v=2">
-  <script src="/assets/pwa-install.js" defer></script>
+  <link rel="stylesheet" href="<?= varlik('/assets/style.css') ?>">
+  <script src="<?= varlik('/assets/pwa-install.js') ?>" defer></script>
 </head>
 <body class="auth-body">
 
@@ -214,7 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="auth-card">
   <div class="auth-header">
     <a href="/" aria-label="Ana sayfaya dön">
-      <div class="auth-logo"><img src="/assets/icons/icon-192.png?v=2" alt="AYS logosu"></div>
+      <div class="auth-logo"><img src="<?= varlik('/assets/icons/icon-192.png') ?>" alt="AYS logosu"></div>
       <h1 class="auth-title">AYS</h1>
     </a>
     <p class="auth-subtitle">Apartman Yönetim Sistemi</p>

@@ -7,6 +7,9 @@
  * Yazdırma sayfası HTML header'ı (standart yapı)
  */
 function print_header(string $baslik, array $kullanici): string {
+    // Heredoc içinde PHP etiketi çalışmaz (düz metin olarak basılırdı),
+    // bu yüzden adres önce değişkene alınıp {$...} ile gömülüyor.
+    $print_css = varlik('/assets/print.css');
     return <<<HTML
 <!DOCTYPE html>
 <html lang="tr">
@@ -16,7 +19,7 @@ function print_header(string $baslik, array $kullanici): string {
     <title>{$baslik} - Yazdır</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/print.css">
+    <link rel="stylesheet" href="{$print_css}">
 </head>
 <body class="print-page">
 HTML;
@@ -50,10 +53,13 @@ function print_page_header(array $kullanici, string $baslik, string $donem = nul
         </div>';
     }
 
+    // Heredoc içinde PHP etiketi çalışmaz; adres önce değişkene alınır.
+    $logo_src = varlik('/assets/icons/icon-192.png');
+
     return <<<HTML
 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #e94560; padding-bottom:8px; margin-bottom:12px;">
     <div style="display:flex; align-items:center; gap:10px;">
-        <img src="/assets/icons/icon-192.png?v=2" alt="AYS logosu" style="width:36px; height:36px; border-radius:8px; display:block;">
+        <img src="{$logo_src}" alt="AYS logosu" style="width:36px; height:36px; border-radius:8px; display:block;">
         <div>
             <div style="font-size:14pt; font-weight:700; color:#1a1a2e; line-height:1.1; margin-bottom:3px;">{$apartman_adi_html}</div>
             <div style="font-size:8pt; color:#666;">Dönem: {$tarih_str} &nbsp;|&nbsp; Yazdırma: {$yazdirma_tarihi} &nbsp;|&nbsp; {$baslik}</div>
