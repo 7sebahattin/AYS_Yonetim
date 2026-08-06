@@ -2,29 +2,42 @@
 #  .htaccess — AYS belge kökü davranışı
 #
 #  NEDEN VAR: 05.08.2026'da başka bir projenin (nymagro) FTP
-#  senkronizasyonu yanlış dizine çalıştı ve bu klasöre KENDİ
-#  .htaccess dosyasını bıraktı. O dosya her isteği "public/"
-#  alt klasörüne yönlendiriyordu; AYS'de böyle bir klasör
-#  olmadığı için sitenin tamamı 404 vermeye başladı.
+#  senkronizasyonu yanlış hedefe çalıştı ve kendi .htaccess dosyasını
+#  hesabın EV DİZİNİNE (/home/<kullanici>/) bıraktı. O dosya şunu
+#  içeriyordu:
 #
-#  Bu dosyanın işlevi: belge kökünün davranışını AÇIKÇA tanımlamak.
-#  Böylece dışarıdan gelen yabancı bir .htaccess deploy sırasında
-#  ÜZERİNE YAZILIR. (Deploy'umuz dosya silmez ama aynı adlı dosyayı
-#  değiştirir; bu yüzden dosyanın repoda bulunması bir güvenlik ağı.)
+#      RewriteCond %{REQUEST_URI} !/public/
+#      RewriteRule ^(.+)$ public/$1 [QSA,L]
 #
-#  BİLEREK MİNİMAL: Site şu anda kapalıyken canlıda test etme imkânı
-#  yok. Paylaşımlı hostingde AllowOverride kısıtlıysa desteklenmeyen
-#  bir direktif 500 hatası verir ve durumu kötüleştirir. Bu yüzden
-#  yalnızca sorunu fiilen çözen ve her yapılandırmada kabul edilen
-#  DirectoryIndex kullanıldı. (Dizin listelemeyi kapatmak gibi ek
-#  sıkılaştırmalar site ayağa kalktıktan sonra ayrıca değerlendirilebilir.)
+#  Apache/LiteSpeed'de .htaccess kuralları ÜST DİZİNLERDEN MİRAS
+#  ALINIR. Ev dizinindeki bu dosya hesaptaki tüm alan adlarını etkiledi
+#  ve her isteği "public/" klasörüne çevirdi. AYS'de böyle bir klasör
+#  olmadığı için sitenin tamamı — düz bir test.txt dahil — 404 verdi.
 #
-#  AYS "temiz URL" kullanmaz — adresler doğrudan .php dosyalarıdır
+#  İLK DENEMEDE NEDEN YETMEDİ: Bu dosyada başta yalnızca DirectoryIndex
+#  vardı. Alt dizindeki DirectoryIndex, üst dizinden gelen RewriteRule'u
+#  iptal etmez; bu yüzden dosya doğru yerde olmasına rağmen site
+#  açılmadı. Çözüm aşağıdaki "RewriteEngine On" satırı:
+#
+#  mod_rewrite'ta bir dizin KENDİ rewrite yapılandırmasını tanımladığı
+#  anda, üst dizinin kuralları varsayılan olarak MİRAS ALINMAZ
+#  (miras ancak "RewriteOptions Inherit" ile açıkça istenirse olur).
+#  Yani tek bir "RewriteEngine On" satırı — altında hiç kural olmasa
+#  bile — bu dizini yukarıdan gelen yönlendirmelere karşı yalıtır.
+#
+#  AYS "temiz URL" kullanmaz; adresler doğrudan .php dosyalarıdır
 #  (/login.php, /dashboard.php ...). Bu yüzden hiçbir RewriteRule
-#  gerekmiyor; kasıtlı olarak eklenmedi.
+#  gerekmiyor ve kasıtlı olarak eklenmedi — buradaki RewriteEngine
+#  satırının tek amacı mirası kesmek.
 # ============================================================
 
-# Ana sayfa index.php olsun. Yabancı dosyanın "DirectoryIndex
-# public/index.php" satırını ve tüm yönlendirme kurallarını geçersiz
-# kılar (aynı adlı dosya tamamen değiştirildiği için).
+# Ana sayfa index.php olsun (üstteki yabancı dosyanın
+# "DirectoryIndex public/index.php" satırını geçersiz kılar).
 DirectoryIndex index.php index.html
+
+# Üst dizinlerden gelen yönlendirme kurallarını kes. Bu dizin kendi
+# rewrite bağlamını tanımladığı için ev dizinindeki kurallar buraya
+# uygulanmaz. Altına bilerek hiçbir kural yazılmadı.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+</IfModule>
